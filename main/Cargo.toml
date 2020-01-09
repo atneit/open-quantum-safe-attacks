@@ -5,3 +5,4 @@ authors = ["Alexander Nilsson <a.code@nilsson.link>"]
 edition = "2018"
 
 [dependencies]
+liboqs-rs-bindings = {path = "../liboqs-rs-bindings"}
