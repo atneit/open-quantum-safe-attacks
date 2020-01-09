@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "liboqs-rs-bindings",
+    "main",
+]

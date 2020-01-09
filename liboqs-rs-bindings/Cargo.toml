@@ -1,0 +1,7 @@
+[package]
+name = "liboqs-rs-bindings"
+version = "0.1.0"
+authors = ["Alexander Nilsson <a.code@nilsson.link>"]
+edition = "2018"
+
+[dependencies]
