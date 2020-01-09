@@ -12,7 +12,8 @@ fn main() {
     let path_i = path_i.display();
     let path_l = path_l.display();
     println!("cargo:rustc-link-search={}", path_l);
-    println!("cargo:rustc-link-lib=oqs");
+    println!("cargo:rustc-link-lib=static=oqs");
+    println!("cargo:rustc-link-lib=crypto");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=wrapper.h");
