@@ -4,6 +4,7 @@ use log::debug;
 use structopt::StructOpt;
 
 mod attack;
+mod utils;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "command")]

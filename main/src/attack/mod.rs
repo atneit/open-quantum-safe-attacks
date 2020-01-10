@@ -6,7 +6,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub enum Attacks {
     /// Run the MEMCPY attack against FrodoKEM640AES
-    MemcmpFrodoKEM640AES,
+    MemcmpFrodoKEM640AES { samples: usize, warmup: usize },
 }
 
 #[derive(StructOpt, Debug)]
@@ -23,7 +23,9 @@ pub struct AttackOptions {
 #[logfn_inputs(Trace)]
 pub fn run(options: AttackOptions) -> Result<(), String> {
     match options.attack {
-        Attacks::MemcmpFrodoKEM640AES => memcmp_frodo::memcmp_frodo640aes()?,
+        Attacks::MemcmpFrodoKEM640AES { samples, warmup } => {
+            memcmp_frodo::memcmp_frodo640aes(samples, warmup)?
+        }
     }
 
     Ok(())
