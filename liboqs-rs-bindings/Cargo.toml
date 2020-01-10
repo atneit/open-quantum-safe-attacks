@@ -5,6 +5,7 @@ authors = ["Alexander Nilsson <a.code@nilsson.link>"]
 edition = "2018"
 
 [dependencies]
+log = "0.4"
 
 [build-dependencies]
 bindgen = "0.52.0"

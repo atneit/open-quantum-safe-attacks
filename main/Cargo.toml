@@ -1,8 +1,12 @@
 [package]
-name = "main"
+name = "oqs-afw"
 version = "0.1.0"
 authors = ["Alexander Nilsson <a.code@nilsson.link>"]
 edition = "2018"
 
 [dependencies]
 liboqs-rs-bindings = {path = "../liboqs-rs-bindings"}
+structopt = "0.3"
+log = "0.4"
+log-derive = "0.4.0"
+simple_logger = "1.4"
