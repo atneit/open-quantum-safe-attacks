@@ -7,14 +7,14 @@ mod attack;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "command")]
-/// the stupid content tracker
+/// The libOQS Attack FrameWork (OQS-AFW)
 enum Command {
     /// Known attacks
     Attack(attack::AttackOptions),
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "aoqs-afw")]
+#[structopt(name = "oqs-afw")]
 struct ProgramArgs {
     #[structopt(short, long, default_value = "info")]
     /// Set log level to trace, debug, info, warn or error

@@ -26,4 +26,8 @@ Then it is a simple matter to build with
 
 The easiest way to run it is to use the following command (which also builds it, if neccessary):
 
-    cargo run
+    cargo run -- <program arguments>
+
+e.g.
+
+    cargo run -- help

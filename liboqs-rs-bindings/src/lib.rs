@@ -15,7 +15,7 @@ pub enum OqsStatus {
 impl From<OQS_STATUS> for OqsStatus {
     fn from(status: OQS_STATUS) -> Self {
         match status {
-            1 => OqsStatus::OqsSuccess,
+            0 => OqsStatus::OqsSuccess,
             50 => OqsStatus::OqsExternalLibErrorOpenssl,
             _ => OqsStatus::OqsError,
         }
