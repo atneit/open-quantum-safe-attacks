@@ -5,8 +5,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use log::trace;
-
+#[derive(Debug)]
 pub enum OqsStatus {
     OqsError,
     OqsSuccess,
@@ -16,7 +15,7 @@ pub enum OqsStatus {
 impl From<OQS_STATUS> for OqsStatus {
     fn from(status: OQS_STATUS) -> Self {
         match status {
-            0 => OqsStatus::OqsSuccess,
+            1 => OqsStatus::OqsSuccess,
             50 => OqsStatus::OqsExternalLibErrorOpenssl,
             _ => OqsStatus::OqsError,
         }
@@ -36,10 +35,12 @@ impl From<OqsStatus> for Result {
 }
 
 #[macro_export]
-macro_rules! callunsafe {
-    ($unsafeblock:block) => {{
-        trace!("executing unsafe: {}", stringify!($unsafeblock));
-        let ret: $crate::OqsStatus = unsafe { $unsafeblock }.into();
+macro_rules! calloqs {
+    ($funcname:ident($($args:tt),*)) => {{
+        use log::trace;
+        trace!("liboqs function {} executing.", stringify!($funcname));
+        let ret: $crate::OqsStatus = unsafe { $crate::$funcname($($args,)+) }.into();
+        trace!("liboqs function {} returned {:?}", stringify!($funcname), ret);
         $crate::Result::from(ret)
     }};
 }
