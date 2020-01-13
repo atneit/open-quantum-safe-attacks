@@ -6,7 +6,6 @@ use log::{debug, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::*;
 use oqs::Result;
-use std::arch::x86_64::__rdtscp;
 
 #[derive(Debug)]
 enum ModificationType {
@@ -24,53 +23,14 @@ fn iterate<FRODO: FrodoKem>(
     modification: ModificationType,
     measure: MeasureSource,
 ) -> Result {
-    let mut shared_secret_e = FRODO::zerp_ss();
-    let mut shared_secret_d = FRODO::zerp_ss();
+    let mut shared_secret_e = FRODO::zero_ss();
+    let mut shared_secret_d = FRODO::zero_ss();
     FRODO::encaps(ciphertext, &mut shared_secret_e, public_key)?;
 
     modify::<FRODO>(ciphertext, modification);
 
-    let diff = match measure {
-        MeasureSource::External => {
-            let mut cpu_core_ident_start = 0u32;
-            let mut cpu_core_ident_stop = 0u32;
-            let start = unsafe { __rdtscp(&mut cpu_core_ident_start) };
-            let _ = FRODO::decaps(ciphertext, &mut shared_secret_d, secret_key)?;
-            let stop = unsafe { __rdtscp(&mut cpu_core_ident_stop) };
-            if cpu_core_ident_start == cpu_core_ident_stop {
-                Some(stop - start)
-            } else {
-                None
-            }
-        }
-        MeasureSource::Internal => {
-            let results = FRODO::decaps_measure(ciphertext, &mut shared_secret_d, secret_key)?;
-            results.memcmp_timing
-        }
-        MeasureSource::Oracle => {
-            let results = FRODO::decaps_measure(ciphertext, &mut shared_secret_d, secret_key)?;
-            if let Some(memcmp1) = results.memcmp1 {
-                //memcmp1 has executed
-                let mut time = 100; //base timing
-                if memcmp1 {
-                    time += 50;
-                    //first part was identical
-                    if let Some(memcmp2) = results.memcmp2 {
-                        if memcmp2 {
-                            //last part was also identical
-                            time += 100;
-                        }
-                    } else {
-                        unreachable!("If memcmp1 is true then memcmp2 must have been executed!");
-                    }
-                }
-                Some(time)
-            } else {
-                //Somehing happened, no comparison was executed at all
-                None
-            }
-        }
-    };
+    let diff =
+        measure.measure(|| FRODO::decaps_measure(ciphertext, &mut shared_secret_d, secret_key))?;
     if let Some(hist) = histogram {
         if let Some(d) = diff {
             debug!("Decapsulated shared secret in {} (rdtscp timestamps)", d);
@@ -111,7 +71,10 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
     warmup: usize,
     measure_source: MeasureSource,
 ) -> Result {
-    info!("Launching the MEMCMP attack against FrodKEM640AES.");
+    info!(
+        "Launching the baseline routine against {} MEMCMP vulnerability.",
+        FRODO::name()
+    );
     let mut public_key = FRODO::zero_pk();
     let mut secret_key = FRODO::zero_sk();
     let mut ciphertext = FRODO::zero_ct();

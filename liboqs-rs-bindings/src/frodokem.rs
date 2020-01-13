@@ -1,5 +1,11 @@
 use crate as oqs;
 
+pub struct InternalMeasurments {
+    pub memcmp_timing: Option<u64>,
+    pub memcmp1: Option<bool>,
+    pub memcmp2: Option<bool>,
+}
+
 struct InternalMeasureer {
     start: u64,
     stop: u64,
@@ -31,12 +37,6 @@ impl InternalMeasureer {
             &mut self.memcmp2,
         )
     }
-}
-
-pub struct InternalMeasurments {
-    pub memcmp_timing: Option<u64>,
-    pub memcmp1: Option<bool>,
-    pub memcmp2: Option<bool>,
 }
 
 impl InternalMeasurments {
@@ -72,10 +72,12 @@ pub trait FrodoKem {
     type Ciphertext;
     type SharedSecret;
 
+    fn name() -> &'static str;
+
     fn zero_pk() -> Self::PublicKey;
     fn zero_sk() -> Self::SecretKey;
     fn zero_ct() -> Self::Ciphertext;
-    fn zerp_ss() -> Self::SharedSecret;
+    fn zero_ss() -> Self::SharedSecret;
 
     fn as_slice(ct: &mut Self::Ciphertext) -> &mut [u8];
 
@@ -106,6 +108,10 @@ impl FrodoKem for FrodoKem640aes {
     type Ciphertext = [u8; oqs::OQS_KEM_frodokem_640_aes_length_ciphertext as usize];
     type SharedSecret = [u8; oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize];
 
+    fn name() -> &'static str {
+        "FrodoKem640aes"
+    }
+
     fn zero_pk() -> Self::PublicKey {
         [0u8; oqs::OQS_KEM_frodokem_640_aes_length_public_key as usize]
     }
@@ -115,7 +121,7 @@ impl FrodoKem for FrodoKem640aes {
     fn zero_ct() -> Self::Ciphertext {
         [0u8; oqs::OQS_KEM_frodokem_640_aes_length_ciphertext as usize]
     }
-    fn zerp_ss() -> Self::SharedSecret {
+    fn zero_ss() -> Self::SharedSecret {
         [0u8; oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize]
     }
 
@@ -175,6 +181,10 @@ impl FrodoKem for FrodoKem1344aes {
     type Ciphertext = [u8; oqs::OQS_KEM_frodokem_1344_aes_length_ciphertext as usize];
     type SharedSecret = [u8; oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize];
 
+    fn name() -> &'static str {
+        "FrodoKem1344aes"
+    }
+
     fn zero_pk() -> Self::PublicKey {
         [0u8; oqs::OQS_KEM_frodokem_1344_aes_length_public_key as usize]
     }
@@ -184,7 +194,7 @@ impl FrodoKem for FrodoKem1344aes {
     fn zero_ct() -> Self::Ciphertext {
         [0u8; oqs::OQS_KEM_frodokem_1344_aes_length_ciphertext as usize]
     }
-    fn zerp_ss() -> Self::SharedSecret {
+    fn zero_ss() -> Self::SharedSecret {
         [0u8; oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize]
     }
 
