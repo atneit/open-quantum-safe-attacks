@@ -44,16 +44,16 @@ pub fn find_e<FRODO: FrodoKem>(
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
 
+    info!("Encapsulating shared secret and generating ciphertext");
+    let mut shared_secret_e = FRODO::zero_ss();
+    let mut shared_secret_d = FRODO::zero_ss();
+    FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
+
     debug!(
         "Starting with {} bits modification to end of ciphertext!",
         start_mod
     );
     modify::<FRODO>(&mut ciphertext, start_mod);
-
-    info!("Encapsulating shared secret");
-    let mut shared_secret_e = FRODO::zero_ss();
-    let mut shared_secret_d = FRODO::zero_ss();
-    FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
     info!("Running decryption oracle {} times for warmup.", warmup);
     for _ in 0..warmup {
