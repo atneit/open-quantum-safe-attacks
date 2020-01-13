@@ -4,8 +4,8 @@ use log::info;
 pub fn display_histogram(prefix: &str, histogram: Histogram) {
     // print percentiles from the histogram
     info!(
-        "({}) Percentiles: p0.1: {} ticks, p1.0: {} ticks, \
-         p10 {} ticks, p50: {} ticks, p90: {} ticks, \
+        "({}) Percentiles: <0.1%: {} ticks, <1.0%: {} ticks, \
+         <10% {} ticks, <%50% {} ticks, <90% {} ticks, \
          p99: {} ticks, p99.9: {} ticks",
         prefix,
         histogram.percentile(0.1).unwrap(),
@@ -19,7 +19,7 @@ pub fn display_histogram(prefix: &str, histogram: Histogram) {
 
     // print additional statistics
     info!(
-        "({}) Latency (ns): Min: {} Avg: {} Max: {} StdDev: {}",
+        "({}) Latency (ticks): Min: {} Avg: {} Max: {} StdDev: {}",
         prefix,
         histogram.minimum().unwrap(),
         histogram.mean().unwrap(),

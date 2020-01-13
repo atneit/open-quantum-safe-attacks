@@ -5,6 +5,7 @@ use log::{debug, info, trace, warn};
 use log_derive::logfn_inputs;
 use oqs::{calloqs, Result};
 use std::arch::x86_64::__rdtscp;
+use std::ptr::null_mut;
 
 #[derive(Debug)]
 enum ModificationType {
@@ -46,15 +47,45 @@ fn iterate(
     let diff = {
         let mut cpu_core_ident_start = 0u32;
         let mut cpu_core_ident_stop = 0u32;
+        /*         let mut start = 0u64; //unsafe { __rdtscp(&mut cpu_core_ident_start) };
+        let mut stop = 0u64;
+
+        {
+            let start = &mut start;
+            let stop = &mut stop;
+            let cpu_core_ident_start = &mut cpu_core_ident_start;
+            let cpu_core_ident_stop = &mut cpu_core_ident_stop;
+            calloqs!(OQS_KEM_frodokem_640_aes_decaps(
+                shared_secret_d,
+                ciphertext,
+                secret_key,
+                start,
+                stop,
+                cpu_core_ident_start,
+                cpu_core_ident_stop
+            ))?;
+        }
+
+        //let stop = unsafe { __rdtscp(&mut cpu_core_ident_stop) }; */
+
         let start = unsafe { __rdtscp(&mut cpu_core_ident_start) };
 
-        calloqs!(OQS_KEM_frodokem_640_aes_decaps(
-            shared_secret_d,
-            ciphertext,
-            secret_key
-        ))?;
+        {
+            let nullu64: *mut u64 = null_mut();
+            let nullu32: *mut u32 = null_mut();
+            calloqs!(OQS_KEM_frodokem_640_aes_decaps(
+                shared_secret_d,
+                ciphertext,
+                secret_key,
+                nullu64,
+                nullu64,
+                nullu32,
+                nullu32
+            ))?;
+        }
 
         let stop = unsafe { __rdtscp(&mut cpu_core_ident_stop) };
+
         if cpu_core_ident_start == cpu_core_ident_stop {
             Some(stop - start)
         } else {
@@ -126,7 +157,7 @@ pub fn memcmp_frodo640aes(samples: usize, warmup: usize) -> Result {
     }
 
     info!(
-        "Sampling {} encap/decap iterations without modifications",
+        "(NOOP) Sampling {} encap/decap iterations without modifications",
         samples
     );
     for _ in 0..samples {
@@ -140,7 +171,7 @@ pub fn memcmp_frodo640aes(samples: usize, warmup: usize) -> Result {
     }
 
     info!(
-        "Sampling {} encap/decap iterations, modifying first positions",
+        "(START) Sampling {} encap/decap iterations, modifying first positions",
         samples
     );
     for _ in 0..samples {
@@ -154,7 +185,7 @@ pub fn memcmp_frodo640aes(samples: usize, warmup: usize) -> Result {
     }
 
     info!(
-        "Sampling {} encap/decap iterations, modifying last positions",
+        "(END) Sampling {} encap/decap iterations, modifying last positions",
         samples
     );
     for _ in 0..samples {
@@ -168,7 +199,7 @@ pub fn memcmp_frodo640aes(samples: usize, warmup: usize) -> Result {
     }
 
     info!(
-        "Sampling {} encap/decap iterations, modifying uniformly",
+        "(UNIF) Sampling {} encap/decap iterations, modifying uniformly",
         samples
     );
     for _ in 0..samples {
