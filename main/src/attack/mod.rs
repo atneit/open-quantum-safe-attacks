@@ -8,7 +8,7 @@ use structopt::StructOpt;
 #[structopt(name = "type")]
 pub enum Attacks {
     /// Run the MEMCPY attack against FrodoKEM640AES
-    BaselineMemcmpFrodo {
+    MemcmpFrodoBaseline {
         #[structopt(subcommand, name = "frodo-params")]
         params: FrodoParams,
 
@@ -19,6 +19,14 @@ pub enum Attacks {
         /// Number of samples to run
         #[structopt(short, long)]
         samples: usize,
+
+        /// Measurment source, either external, internal or oracle
+        #[structopt(short, long)]
+        measure_source: memcmp_frodo::MeasureSource,
+    },
+    MemcmpFrodoFindE {
+        #[structopt(subcommand, name = "frodo-params")]
+        params: FrodoParams,
 
         /// Measurment source, either external, internal or oracle
         #[structopt(short, long)]
@@ -43,7 +51,7 @@ pub struct AttackOptions {
 #[logfn_inputs(Trace)]
 pub fn run(options: AttackOptions) -> Result<(), String> {
     match options.attack {
-        Attacks::BaselineMemcmpFrodo {
+        Attacks::MemcmpFrodoBaseline {
             params,
             samples,
             warmup,
@@ -59,6 +67,17 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
             };
 
             f(samples, warmup, measure_source)
+        }
+        Attacks::MemcmpFrodoFindE {
+            params,
+            measure_source,
+        } => {
+            let f = match params {
+                FrodoParams::FrodoKem640aes => memcmp_frodo::find_e::<FrodoKem640aes>,
+                FrodoParams::FrodoKem1344aes => memcmp_frodo::find_e::<FrodoKem1344aes>,
+            };
+
+            f(measure_source)
         }
     }
 }

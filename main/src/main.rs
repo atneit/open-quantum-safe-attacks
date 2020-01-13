@@ -1,6 +1,7 @@
 //use liboqs_rs_bindings as oqs;
 
 use log::debug;
+use structopt::clap::Shell;
 use structopt::StructOpt;
 
 mod attack;
@@ -12,6 +13,11 @@ mod utils;
 enum Command {
     /// Known attacks
     Attack(attack::AttackOptions),
+    /// Generate auto completions for all supported shells
+    Completions {
+        /// the shell to generate the auto completions file for. possible values: bash, fish, zsh, powershell & elvish
+        shell: Shell,
+    },
 }
 
 #[derive(StructOpt, Debug)]
@@ -31,6 +37,10 @@ fn main() -> Result<(), String> {
 
     match matches.command {
         Command::Attack(opt) => attack::run(opt)?,
+        Command::Completions { shell } => {
+            let mut app = ProgramArgs::clap();
+            app.gen_completions("oqs-afw", shell, "./");
+        }
     };
 
     Ok(())
