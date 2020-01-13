@@ -45,6 +45,8 @@ macro_rules! calloqs {
     }};
 }
 
+pub mod frodokem;
+
 #[cfg(test)]
 mod tests {
     use crate::*;
