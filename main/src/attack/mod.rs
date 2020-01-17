@@ -36,10 +36,6 @@ pub enum Attacks {
         #[structopt(short, long)]
         iterations: usize,
 
-        /// The number bits to flip in order to find the threashold value
-        #[structopt(short, long)]
-        start_mod: usize,
-
         /// Measurment source, either external, internal or oracle
         #[structopt(short, long)]
         measure_source: memcmp_frodo::MeasureSource,
@@ -84,7 +80,6 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
             params,
             warmup,
             iterations,
-            start_mod,
             measure_source,
         } => {
             let f = match params {
@@ -92,7 +87,7 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
                 FrodoParams::FrodoKem1344aes => memcmp_frodo::find_e::<FrodoKem1344aes>,
             };
 
-            f(warmup, iterations, start_mod, measure_source)
+            f(warmup, iterations, measure_source)
         }
     }
 }

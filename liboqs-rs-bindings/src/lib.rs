@@ -22,6 +22,12 @@ impl From<OQS_STATUS> for OqsStatus {
     }
 }
 
+impl From<()> for OqsStatus {
+    fn from(_: ()) -> Self {
+        OqsStatus::OqsSuccess
+    }
+}
+
 pub type Result = std::result::Result<(), String>;
 
 impl From<OqsStatus> for Result {

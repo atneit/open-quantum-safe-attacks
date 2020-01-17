@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate as oqs;
 
 pub struct InternalMeasurments {
@@ -71,6 +72,8 @@ pub trait FrodoKem {
     type SecretKey;
     type Ciphertext;
     type SharedSecret;
+    type Bp;
+    type C;
 
     fn name() -> &'static str;
 
@@ -79,7 +82,11 @@ pub trait FrodoKem {
     fn zero_ct() -> Self::Ciphertext;
     fn zero_ss() -> Self::SharedSecret;
 
-    fn as_slice(ct: &mut Self::Ciphertext) -> &mut [u8];
+    fn ct_as_slice(ct: &mut Self::Ciphertext) -> &mut [u8];
+    fn Bp_as_slice(ct: &mut Self::Bp) -> &mut [u16];
+    fn C_as_slice(ct: &mut Self::C) -> &mut [u16];
+
+    fn qmax() -> u16;
 
     fn keypair(pk: &mut Self::PublicKey, sk: &mut Self::SecretKey) -> oqs::Result;
     fn encaps(
@@ -97,16 +104,28 @@ pub trait FrodoKem {
         ss: &mut Self::SharedSecret,
         sk: &mut Self::SecretKey,
     ) -> std::result::Result<InternalMeasurments, String>;
+    fn unpack(ct: &mut Self::Ciphertext) -> std::result::Result<(Self::Bp, Self::C), String>;
+    fn pack(bp: Self::Bp, c: Self::C, into: &mut Self::Ciphertext) -> oqs::Result;
 }
 
 pub struct FrodoKem640aes;
 pub struct FrodoKem1344aes;
+
+const PARAMS_NBAR: usize = 8;
+const PARAMS_640_N: usize = 640;
+const PARAMS_640_LOGQ: usize = 15;
+const PARAMS_640_QMAX: u16 = 32767;
+const PARAMS_1344_N: usize = 1344;
+const PARAMS_1344_LOGQ: usize = 16;
+const PARAMS_1344_QMAX: u16 = 65535;
 
 impl FrodoKem for FrodoKem640aes {
     type PublicKey = [u8; oqs::OQS_KEM_frodokem_640_aes_length_public_key as usize];
     type SecretKey = [u8; oqs::OQS_KEM_frodokem_640_aes_length_secret_key as usize];
     type Ciphertext = [u8; oqs::OQS_KEM_frodokem_640_aes_length_ciphertext as usize];
     type SharedSecret = [u8; oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize];
+    type Bp = [u16; PARAMS_640_N * PARAMS_NBAR];
+    type C = [u16; PARAMS_NBAR * PARAMS_NBAR];
 
     fn name() -> &'static str {
         "FrodoKem640aes"
@@ -125,8 +144,18 @@ impl FrodoKem for FrodoKem640aes {
         [0u8; oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize]
     }
 
-    fn as_slice(ct: &mut Self::Ciphertext) -> &mut [u8] {
+    fn ct_as_slice(ct: &mut Self::Ciphertext) -> &mut [u8] {
         &mut ct[..]
+    }
+    fn Bp_as_slice(bp: &mut Self::Bp) -> &mut [u16] {
+        &mut bp[..]
+    }
+    fn C_as_slice(c: &mut Self::C) -> &mut [u16] {
+        &mut c[..]
+    }
+
+    fn qmax() -> u16 {
+        PARAMS_640_QMAX
     }
 
     fn keypair(pk: &mut Self::PublicKey, sk: &mut Self::SecretKey) -> oqs::Result {
@@ -173,6 +202,54 @@ impl FrodoKem for FrodoKem640aes {
         ))?;
         Ok(InternalMeasurments::new(measureer))
     }
+
+    fn unpack(ct: &mut Self::Ciphertext) -> std::result::Result<(Self::Bp, Self::C), String> {
+        let mut bp: Self::Bp = [0; PARAMS_640_N * PARAMS_NBAR];
+        let bp_out = bp.as_mut_ptr();
+        let bp_outlen = bp.len();
+        // Bits neccessary to represent the matrix, divided by number of bits per byte
+        let bp_inlen = (PARAMS_640_LOGQ * PARAMS_640_N * PARAMS_NBAR) / 8;
+        let bp_input = ct[0..bp_inlen].as_mut_ptr();
+        let lsb = PARAMS_640_LOGQ as u8;
+        // frodo_unpack(Bp, PARAMS_N*PARAMS_NBAR, ct_c1, (PARAMS_LOGQ*PARAMS_N*PARAMS_NBAR)/8, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_640_aes_unpack(
+            bp_out, bp_outlen, bp_input, bp_inlen, lsb
+        ))?;
+        let mut c: Self::C = [0; PARAMS_NBAR * PARAMS_NBAR];
+        let c_out = c.as_mut_ptr();
+        let c_outlen = c.len();
+        // Bits neccessary to represent the matrix, divided by number of bits per byte
+        let c_inlen = (PARAMS_640_LOGQ * PARAMS_NBAR * PARAMS_NBAR) / 8;
+        let c_input = ct[bp_inlen..bp_inlen + c_inlen].as_mut_ptr();
+        // frodo_unpack(C, PARAMS_NBAR*PARAMS_NBAR, ct_c2, (PARAMS_LOGQ*PARAMS_NBAR*PARAMS_NBAR)/8, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_640_aes_unpack(
+            c_out, c_outlen, c_input, c_inlen, lsb
+        ))?;
+        Ok((bp, c))
+    }
+
+    fn pack(mut bp: Self::Bp, mut c: Self::C, ct: &mut Self::Ciphertext) -> oqs::Result {
+        let c1_outlen = (PARAMS_640_LOGQ * PARAMS_640_N * PARAMS_NBAR) / 8;
+        let c1 = ct[0..c1_outlen].as_mut_ptr();
+        let bp_input = bp.as_mut_ptr();
+        let bp_inlen = bp.len();
+        let lsb = PARAMS_640_LOGQ as u8;
+        //frodo_pack(ct_c1, (PARAMS_LOGQ*PARAMS_N*PARAMS_NBAR)/8, Bp, PARAMS_N*PARAMS_NBAR, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_640_aes_pack(
+            c1, c1_outlen, bp_input, bp_inlen, lsb
+        ))?;
+
+        let c2_outlen = (PARAMS_640_LOGQ * PARAMS_NBAR * PARAMS_NBAR) / 8;
+        let c2 = ct[c1_outlen..c1_outlen + c2_outlen].as_mut_ptr();
+        let c_input = c.as_mut_ptr();
+        let c_inlen = c.len();
+        let lsb = PARAMS_640_LOGQ as u8;
+        //frodo_pack(ct_c2, (PARAMS_LOGQ*PARAMS_NBAR*PARAMS_NBAR)/8, C, PARAMS_NBAR*PARAMS_NBAR, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_640_aes_pack(
+            c2, c2_outlen, c_input, c_inlen, lsb
+        ))?;
+        Ok(())
+    }
 }
 
 impl FrodoKem for FrodoKem1344aes {
@@ -180,6 +257,8 @@ impl FrodoKem for FrodoKem1344aes {
     type SecretKey = [u8; oqs::OQS_KEM_frodokem_1344_aes_length_secret_key as usize];
     type Ciphertext = [u8; oqs::OQS_KEM_frodokem_1344_aes_length_ciphertext as usize];
     type SharedSecret = [u8; oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize];
+    type Bp = [u16; PARAMS_1344_N * PARAMS_NBAR];
+    type C = [u16; PARAMS_NBAR * PARAMS_NBAR];
 
     fn name() -> &'static str {
         "FrodoKem1344aes"
@@ -198,8 +277,18 @@ impl FrodoKem for FrodoKem1344aes {
         [0u8; oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize]
     }
 
-    fn as_slice(ct: &mut Self::Ciphertext) -> &mut [u8] {
+    fn ct_as_slice(ct: &mut Self::Ciphertext) -> &mut [u8] {
         &mut ct[..]
+    }
+    fn Bp_as_slice(bp: &mut Self::Bp) -> &mut [u16] {
+        &mut bp[..]
+    }
+    fn C_as_slice(c: &mut Self::C) -> &mut [u16] {
+        &mut c[..]
+    }
+
+    fn qmax() -> u16 {
+        PARAMS_1344_QMAX
     }
 
     fn keypair(pk: &mut Self::PublicKey, sk: &mut Self::SecretKey) -> oqs::Result {
@@ -245,5 +334,53 @@ impl FrodoKem for FrodoKem1344aes {
             ss, ct, sk, start, stop, cpu_start, cpu_stop, memcmp1, memcmp2
         ))?;
         Ok(InternalMeasurments::new(measureer))
+    }
+
+    fn unpack(ct: &mut Self::Ciphertext) -> std::result::Result<(Self::Bp, Self::C), String> {
+        let mut bp: Self::Bp = [0; PARAMS_1344_N * PARAMS_NBAR];
+        let bp_out = bp.as_mut_ptr();
+        let bp_outlen = bp.len();
+        // Bits neccessary to represent the matrix, divided by number of bits per byte
+        let bp_inlen = (PARAMS_1344_LOGQ * PARAMS_1344_N * PARAMS_NBAR) / 8;
+        let bp_input = ct[0..bp_inlen].as_mut_ptr();
+        let lsb = PARAMS_1344_LOGQ as u8;
+        // frodo_unpack(Bp, PARAMS_N*PARAMS_NBAR, ct_c1, (PARAMS_LOGQ*PARAMS_N*PARAMS_NBAR)/8, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_1344_aes_unpack(
+            bp_out, bp_outlen, bp_input, bp_inlen, lsb
+        ))?;
+        let mut c: Self::C = [0; PARAMS_NBAR * PARAMS_NBAR];
+        let c_out = c.as_mut_ptr();
+        let c_outlen = c.len();
+        // Bits neccessary to represent the matrix, divided by number of bits per byte
+        let c_inlen = (PARAMS_1344_LOGQ * PARAMS_NBAR * PARAMS_NBAR) / 8;
+        let c_input = ct[bp_inlen..bp_inlen + c_inlen].as_mut_ptr();
+        // frodo_unpack(C, PARAMS_NBAR*PARAMS_NBAR, ct_c2, (PARAMS_LOGQ*PARAMS_NBAR*PARAMS_NBAR)/8, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_1344_aes_unpack(
+            c_out, c_outlen, c_input, c_inlen, lsb
+        ))?;
+        Ok((bp, c))
+    }
+
+    fn pack(mut bp: Self::Bp, mut c: Self::C, ct: &mut Self::Ciphertext) -> oqs::Result {
+        let c1_outlen = (PARAMS_1344_LOGQ * PARAMS_1344_N * PARAMS_NBAR) / 8;
+        let c1 = ct[0..c1_outlen].as_mut_ptr();
+        let bp_input = bp.as_mut_ptr();
+        let bp_inlen = bp.len();
+        let lsb = PARAMS_1344_LOGQ as u8;
+        //frodo_pack(ct_c1, (PARAMS_LOGQ*PARAMS_N*PARAMS_NBAR)/8, Bp, PARAMS_N*PARAMS_NBAR, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_1344_aes_pack(
+            c1, c1_outlen, bp_input, bp_inlen, lsb
+        ))?;
+
+        let c2_outlen = (PARAMS_1344_LOGQ * PARAMS_NBAR * PARAMS_NBAR) / 8;
+        let c2 = ct[c1_outlen..c1_outlen + c2_outlen].as_mut_ptr();
+        let c_input = c.as_mut_ptr();
+        let c_inlen = c.len();
+        let lsb = PARAMS_1344_LOGQ as u8;
+        //frodo_pack(ct_c2, (PARAMS_LOGQ*PARAMS_NBAR*PARAMS_NBAR)/8, C, PARAMS_NBAR*PARAMS_NBAR, PARAMS_LOGQ);
+        calloqs!(oqs_kem_frodokem_1344_aes_pack(
+            c2, c2_outlen, c_input, c_inlen, lsb
+        ))?;
+        Ok(())
     }
 }

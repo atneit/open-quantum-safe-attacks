@@ -43,7 +43,7 @@ fn iterate<FRODO: FrodoKem>(
 }
 
 fn modify<FRODO: FrodoKem>(ciphertext: &mut FRODO::Ciphertext, modify: ModificationType) {
-    let slice = FRODO::as_slice(ciphertext);
+    let slice = FRODO::ct_as_slice(ciphertext);
     match modify {
         ModificationType::Noop => {}
         ModificationType::Start => {
