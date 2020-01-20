@@ -3,6 +3,7 @@ use liboqs_rs_bindings as oqs;
 use log::{debug, info, trace, warn};
 use log_derive::{logfn, logfn_inputs};
 use oqs::frodokem::FrodoKem;
+use std::convert::TryInto;
 
 enum Sign<T> {
     Plus(T),
@@ -54,6 +55,29 @@ fn modify<FRODO: FrodoKem>(
     Ok(res)
 }
 
+/// Using binary search to find the maximum amount of modification that will not overflow the integer
+#[logfn(Debug)]
+fn max_mod<FRODO: FrodoKem>(index_ij: usize, ct: &mut FRODO::Ciphertext) -> Result<u16, String> {
+    let mut high = FRODO::qmax();
+    let mut low = 0;
+    Ok(loop {
+        let currentmod: u16 = ((high as u32 + low as u32) / 2)
+            .try_into()
+            .map_err(|_| "overflow")?;
+        // test modify
+        if modify::<FRODO>(ct, index_ij, Sign::Plus(currentmod))? {
+            low = currentmod;
+            //undo it
+            modify::<FRODO>(ct, index_ij, Sign::Minus(currentmod))?;
+        } else {
+            high = currentmod;
+        }
+        if high - 1 <= low {
+            break low;
+        }
+    })
+}
+
 #[logfn(Trace)]
 fn mod_measure<FRODO: FrodoKem>(
     amount: u16,
@@ -90,6 +114,57 @@ fn mod_measure<FRODO: FrodoKem>(
     }
 }
 
+fn search_modification<FRODO: FrodoKem>(
+    index_ij: usize,
+    iterations: usize,
+    measure_source: &MeasureSource,
+    short_circuit_threshold: u64,
+    ciphertext: &mut FRODO::Ciphertext,
+    shared_secret_d: &mut FRODO::SharedSecret,
+    secret_key: &mut FRODO::SecretKey,
+) -> Result<u16, String> {
+    let mut high = max_mod::<FRODO>(0, ciphertext)?;
+    let mut low = 0;
+    let maxmod = loop {
+        let currentmod: u16 = ((high as usize + high as usize + low as usize) as usize / 3)
+            .try_into()
+            .map_err(|_| "overflow")?;
+        debug!("high: {}, low: {}", high, low);
+        info!(
+            "Testing {} bitflips with {} iterations",
+            currentmod, iterations
+        );
+        let time = mod_measure::<FRODO>(
+            currentmod,
+            index_ij,
+            iterations,
+            &measure_source,
+            Some(short_circuit_threshold),
+            ciphertext,
+            shared_secret_d,
+            secret_key,
+        )?;
+
+        if let Some(time) = time {
+            debug!("time measurment is {}", time);
+            if time >= short_circuit_threshold {
+                info!("+Raising lowerbound to {}", currentmod);
+                low = currentmod;
+            } else {
+                info!("-Lowering upperbound to {}", currentmod);
+                high = currentmod;
+            }
+        } else {
+            warn!("Got overflow, lowering upperbound to {}", currentmod);
+            high = currentmod;
+        }
+        if high - low == 1 {
+            break low;
+        }
+    };
+    Ok(maxmod)
+}
+
 #[logfn_inputs(Trace)]
 pub fn find_e<FRODO: FrodoKem>(
     warmup: usize,
@@ -103,7 +178,6 @@ pub fn find_e<FRODO: FrodoKem>(
     let mut public_key = FRODO::zero_pk();
     let mut secret_key = FRODO::zero_sk();
     let mut ciphertext = FRODO::zero_ct();
-    let mut maxmod = FRODO::qmax();
 
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
@@ -139,27 +213,20 @@ pub fn find_e<FRODO: FrodoKem>(
     )?
     .unwrap();
 
-    info!("Running {} iterations with a very major cipertext modification at the end of C to establish lower bound timing threshold.", iterations);
-    let threshold_low = loop {
-        if let Some(t) = mod_measure::<FRODO>(
-            maxmod,
-            0,
-            iterations,
-            &measure_source,
-            None,
-            &mut ciphertext,
-            &mut shared_secret_d,
-            &mut secret_key,
-        )? {
-            break t;
-        } else {
-            maxmod -= 1;
-        }
-    };
-    info!(
-        "Used {} as the maximum value to add to C_2' at index 0.",
-        maxmod
-    );
+    let maxmod = max_mod::<FRODO>(0, &mut ciphertext)?;
+
+    info!("Running {} iterations with max cipertext modification ({}) at index 0 of C to establish lower bound timing threshold.", iterations, maxmod);
+    let threshold_low = mod_measure::<FRODO>(
+        maxmod,
+        0,
+        iterations,
+        &measure_source,
+        None,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+    )?
+    .unwrap();
 
     let threshold = (threshold_high + threshold_low) / 2;
     info!(
@@ -169,47 +236,19 @@ pub fn find_e<FRODO: FrodoKem>(
 
     info!("Starting binary search for determining maximum modifications to C without changing B.");
 
-    let mut high = maxmod; //flipping one bit .len() all bytes appear to be a good start position for the uppper limit
-    let mut low = 0;
-    let maxmod = loop {
-        let currentmod = (high + high + low) / 3;
-        debug!("high: {}, low: {}", high, low);
-        info!(
-            "Testing {} bitflips with {} iterations",
-            currentmod, iterations
-        );
-        let time = mod_measure::<FRODO>(
-            currentmod,
-            0,
-            iterations,
-            &measure_source,
-            Some(threshold),
-            &mut ciphertext,
-            &mut shared_secret_d,
-            &mut secret_key,
-        )?;
-
-        if let Some(time) = time {
-            debug!("time measurment is {}", time);
-            if time >= threshold {
-                info!("Raising lowerbound to {}", currentmod);
-                low = currentmod;
-            } else {
-                info!("Lowering upperbound to {}", currentmod);
-                high = currentmod;
-            }
-        } else {
-            warn!("Got overflow, lowering upperbound to {}", currentmod);
-            high = currentmod;
-        }
-        if high - low == 1 {
-            break low;
-        }
-    };
+    let themod = search_modification::<FRODO>(
+        0,
+        iterations,
+        &measure_source,
+        threshold,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+    )?;
 
     info!(
         "{} is the maximum amount of modifications that can be performed without affecting B",
-        maxmod
+        themod
     );
 
     Ok(())
