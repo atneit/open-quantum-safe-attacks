@@ -133,15 +133,15 @@ macro_rules! impl_kembuf {
         impl Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 let s = self.as_slice();
-                write!(f, "[({})", s.len())?;
+                write!(f, "[(len: {})", s.len())?;
                 if s.len() > 0 {
-                    write!(f, "[ => {}", s[0])?;
-                    if s.len() > 10 {
-                        for i in 0..10 {
+                    write!(f, " {}", s[0])?;
+                    if s.len() > 5 {
+                        for i in 0..5 {
                             write!(f, ", {}", s[i])?;
                         }
-                        write!(f, ", ...,")?;
-                        let endrange = std::cmp::max(10, s.len() - 10);
+                        write!(f, ", ...")?;
+                        let endrange = std::cmp::max(5, s.len() - 5);
                         for i in endrange..s.len() {
                             write!(f, ", {}", s[i])?;
                         }
