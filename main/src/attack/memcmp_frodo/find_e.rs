@@ -1,11 +1,12 @@
 use crate::attack::memcmp_frodo::MeasureSource;
 use liboqs_rs_bindings as oqs;
 use log::{debug, info, trace, warn};
-use log_derive::{logfn, logfn_inputs};
+use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
 use std::convert::TryInto;
 
+#[derive(Debug)]
 enum Sign<T> {
     Plus(T),
     Minus(T),
@@ -14,6 +15,7 @@ enum Sign<T> {
 /// Function that deterministically modifies the input vector.
 ///
 /// To undo apply the same modification one more time
+#[logfn_inputs(Trace)]
 fn modify<FRODO: FrodoKem>(
     ct: &mut FRODO::Ciphertext,
     index_ij: usize,
@@ -57,7 +59,7 @@ fn modify<FRODO: FrodoKem>(
 }
 
 /// Using binary search to find the maximum amount of modification that will not overflow the integer
-#[logfn(Debug)]
+#[logfn_inputs(Trace)]
 fn max_mod<FRODO: FrodoKem>(index_ij: usize, ct: &mut FRODO::Ciphertext) -> Result<u16, String> {
     let mut high = FRODO::qmax();
     let mut low = 0;
@@ -79,7 +81,7 @@ fn max_mod<FRODO: FrodoKem>(index_ij: usize, ct: &mut FRODO::Ciphertext) -> Resu
     })
 }
 
-#[logfn(Trace)]
+#[logfn_inputs(Trace)]
 fn mod_measure<FRODO: FrodoKem>(
     amount: u16,
     index_ij: usize,
@@ -115,6 +117,7 @@ fn mod_measure<FRODO: FrodoKem>(
     }
 }
 
+#[logfn_inputs(Trace)]
 fn search_modification<FRODO: FrodoKem>(
     index_ij: usize,
     iterations: usize,
