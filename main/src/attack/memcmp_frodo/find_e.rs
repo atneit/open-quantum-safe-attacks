@@ -3,6 +3,7 @@ use liboqs_rs_bindings as oqs;
 use log::{debug, info, trace, warn};
 use log_derive::{logfn, logfn_inputs};
 use oqs::frodokem::FrodoKem;
+use oqs::frodokem::KemBuf;
 use std::convert::TryInto;
 
 enum Sign<T> {
@@ -22,7 +23,7 @@ fn modify<FRODO: FrodoKem>(
     trace!("started modify!");
     //Unpack the buffer into a pair of matrices encoded as a vector
     let (Bp, mut C) = FRODO::unpack(ct)?;
-    let Cslice = FRODO::C_as_slice(&mut C);
+    let Cslice = C.as_mut_slice();
 
     let tomod = &mut Cslice[index_ij];
 
@@ -175,16 +176,16 @@ pub fn find_e<FRODO: FrodoKem>(
         "Launching the find_e routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
-    let mut public_key = FRODO::zero_pk();
-    let mut secret_key = FRODO::zero_sk();
-    let mut ciphertext = FRODO::zero_ct();
+    let mut public_key = FRODO::PublicKey::new();
+    let mut secret_key = FRODO::SecretKey::new();
+    let mut ciphertext = FRODO::Ciphertext::new();
 
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
 
     info!("Encapsulating shared secret and generating ciphertext");
-    let mut shared_secret_e = FRODO::zero_ss();
-    let mut shared_secret_d = FRODO::zero_ss();
+    let mut shared_secret_e = FRODO::SharedSecret::new();
+    let mut shared_secret_d = FRODO::SharedSecret::new();
     FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
     info!("Running decryption oracle {} times for warmup.", warmup);

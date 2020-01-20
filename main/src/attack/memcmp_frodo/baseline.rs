@@ -23,8 +23,8 @@ fn iterate<FRODO: FrodoKem>(
     modification: ModificationType,
     measure: MeasureSource,
 ) -> Result {
-    let mut shared_secret_e = FRODO::zero_ss();
-    let mut shared_secret_d = FRODO::zero_ss();
+    let mut shared_secret_e = FRODO::SharedSecret::new();
+    let mut shared_secret_d = FRODO::SharedSecret::new();
     FRODO::encaps(ciphertext, &mut shared_secret_e, public_key)?;
 
     modify::<FRODO>(ciphertext, modification);
@@ -43,7 +43,7 @@ fn iterate<FRODO: FrodoKem>(
 }
 
 fn modify<FRODO: FrodoKem>(ciphertext: &mut FRODO::Ciphertext, modify: ModificationType) {
-    let slice = FRODO::ct_as_slice(ciphertext);
+    let slice = ciphertext.as_mut_slice();
     match modify {
         ModificationType::Noop => {}
         ModificationType::Start => {
@@ -75,9 +75,9 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         "Launching the baseline routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
-    let mut public_key = FRODO::zero_pk();
-    let mut secret_key = FRODO::zero_sk();
-    let mut ciphertext = FRODO::zero_ct();
+    let mut public_key = FRODO::PublicKey::new();
+    let mut secret_key = FRODO::SecretKey::new();
+    let mut ciphertext = FRODO::Ciphertext::new();
 
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
