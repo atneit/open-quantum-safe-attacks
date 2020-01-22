@@ -73,7 +73,7 @@ pub trait KemBuf: Debug {
     type T: Display + Copy + Default;
     fn new() -> Self;
     fn as_mut_ptr(&mut self) -> *mut Self::T;
-    fn len(&self) -> usize;
+    fn len() -> usize;
     fn as_slice(&self) -> &[Self::T];
     fn as_mut_slice(&mut self) -> &mut [Self::T];
 }
@@ -120,8 +120,8 @@ macro_rules! impl_kembuf {
             fn as_mut_ptr(&mut self) -> *mut $t {
                 self.0.as_mut_ptr()
             }
-            fn len(&self) -> usize {
-                self.0.len()
+            fn len() -> usize {
+                $size
             }
             fn as_slice(&self) -> &[$t] {
                 &self.0[..]
@@ -262,7 +262,7 @@ macro_rules! bind_frodokems {
             ) -> std::result::Result<(Self::Bp, Self::C), String> {
                 let mut bp = Self::Bp::new();
                 let bp_out = bp.as_mut_ptr();
-                let bp_outlen = bp.len();
+                let bp_outlen = Self::Bp::len();
                 // Bits neccessary to represent the matrix, divided by number of bits per byte
                 let bp_inlen = ($LOGQ * $N * $NBAR) / 8;
                 let bp_input = ct.as_mut_slice()[0..bp_inlen].as_mut_ptr();
@@ -271,7 +271,7 @@ macro_rules! bind_frodokems {
                 calloqs!($unpack(bp_out, bp_outlen, bp_input, bp_inlen, lsb))?;
                 let mut c = Self::C::new();
                 let c_out = c.as_mut_ptr();
-                let c_outlen = c.len();
+                let c_outlen = Self::C::len();
                 // Bits neccessary to represent the matrix, divided by number of bits per byte
                 let c_inlen = ($LOGQ * $NBAR * $NBAR) / 8;
                 let c_input = ct.as_mut_slice()[bp_inlen..bp_inlen + c_inlen].as_mut_ptr();
@@ -284,7 +284,7 @@ macro_rules! bind_frodokems {
                 let c1_outlen = ($LOGQ * $N * $NBAR) / 8;
                 let c1 = ct.as_mut_slice()[0..c1_outlen].as_mut_ptr();
                 let bp_input = bp.as_mut_ptr();
-                let bp_inlen = bp.len();
+                let bp_inlen = Self::Bp::len();
                 let lsb = $LOGQ as u8;
                 //frodo_pack(ct_c1, (PARAMS_LOGQ*PARAMS_N*$NBAR)/8, Bp, PARAMS_N*$NBAR, PARAMS_LOGQ);
                 calloqs!($pack(c1, c1_outlen, bp_input, bp_inlen, lsb))?;
@@ -292,7 +292,7 @@ macro_rules! bind_frodokems {
                 let c2_outlen = ($LOGQ * $NBAR * $NBAR) / 8;
                 let c2 = ct.as_mut_slice()[c1_outlen..c1_outlen + c2_outlen].as_mut_ptr();
                 let c_input = c.as_mut_ptr();
-                let c_inlen = c.len();
+                let c_inlen = Self::C::len();
                 let lsb = $LOGQ as u8;
                 //frodo_pack(ct_c2, (PARAMS_LOGQ*$NBAR*$NBAR)/8, C, $NBAR*$NBAR, PARAMS_LOGQ);
                 calloqs!($pack(c2, c2_outlen, c_input, c_inlen, lsb))?;
@@ -308,10 +308,10 @@ bind_frodokems! (
         PARAMS_NBAR: 8,
         PARAMS_LOGQ: 15,
         PARAMS_QMAX: 32767,
-        PublicKey: FrodoKem640AesPublicKey[oqs::OQS_KEM_frodokem_640_aes_length_public_key],
-        SecretKey : FrodoKem640AesSecretKey[oqs::OQS_KEM_frodokem_640_aes_length_secret_key],
-        Ciphertext : FrodoKem640AesCiphertext[oqs::OQS_KEM_frodokem_640_aes_length_ciphertext],
-        SharedSecret : FrodoKem640AesSharedSecret[oqs::OQS_KEM_frodokem_640_aes_length_shared_secret],
+        PublicKey: FrodoKem640AesPublicKey[oqs::OQS_KEM_frodokem_640_aes_length_public_key as usize],
+        SecretKey : FrodoKem640AesSecretKey[oqs::OQS_KEM_frodokem_640_aes_length_secret_key as usize],
+        Ciphertext : FrodoKem640AesCiphertext[oqs::OQS_KEM_frodokem_640_aes_length_ciphertext as usize],
+        SharedSecret : FrodoKem640AesSharedSecret[oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize],
         Bp : FrodoKem640AesBp,
         C : FrodoKem640AesC,
         keypair: OQS_KEM_frodokem_640_aes_keypair,
@@ -326,10 +326,10 @@ bind_frodokems! (
         PARAMS_NBAR: 8,
         PARAMS_LOGQ: 16,
         PARAMS_QMAX: 65535,
-        PublicKey: FrodoKem1344AesPublicKey[oqs::OQS_KEM_frodokem_1344_aes_length_public_key],
-        SecretKey : FrodoKem1344AesSecretKey[oqs::OQS_KEM_frodokem_1344_aes_length_secret_key],
-        Ciphertext : FrodoKem1344AesCiphertext[oqs::OQS_KEM_frodokem_1344_aes_length_ciphertext],
-        SharedSecret : FrodoKem1344AesSharedSecret[oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret],
+        PublicKey: FrodoKem1344AesPublicKey[oqs::OQS_KEM_frodokem_1344_aes_length_public_key as usize],
+        SecretKey : FrodoKem1344AesSecretKey[oqs::OQS_KEM_frodokem_1344_aes_length_secret_key as usize],
+        Ciphertext : FrodoKem1344AesCiphertext[oqs::OQS_KEM_frodokem_1344_aes_length_ciphertext as usize],
+        SharedSecret : FrodoKem1344AesSharedSecret[oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize],
         Bp : FrodoKem1344AesBp,
         C : FrodoKem1344AesC,
         keypair: OQS_KEM_frodokem_1344_aes_keypair,

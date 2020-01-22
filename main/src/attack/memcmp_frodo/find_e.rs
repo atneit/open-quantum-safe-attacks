@@ -95,13 +95,19 @@ fn mod_measure<FRODO: FrodoKem>(
     //Modify
     if modify::<FRODO>(ct, index_ij, Sign::Plus(amount))? {
         let mut lowest = u64::max_value();
-        'sample: for _ in 0..iterations {
+        'sample: for it in 0..iterations {
             let m = measure_source.measure(|| FRODO::decaps_measure(ct, ss, sk));
             if let Some(time) = m? {
                 if time < lowest {
                     lowest = time;
                     if let Some(t) = short_circuit_threshold {
                         if lowest < t {
+                            info!(
+                                "C[{}/{}] => Found measurment below threshold already after {} iterations.",
+                                index_ij, 
+                                FRODO::C::len()-1,
+                                it
+                            );
                             break 'sample;
                         }
                     }
@@ -127,16 +133,21 @@ fn search_modification<FRODO: FrodoKem>(
     shared_secret_d: &mut FRODO::SharedSecret,
     secret_key: &mut FRODO::SecretKey,
 ) -> Result<u16, String> {
-    let mut high = max_mod::<FRODO>(0, ciphertext)?;
+    let maxmod = max_mod::<FRODO>(index_ij, ciphertext)?;
+    let mut high = maxmod;
     let mut low = 0;
-    let maxmod = loop {
+    let found = loop {
         let currentmod: u16 = ((high as usize + high as usize + low as usize) as usize / 3)
             .try_into()
             .map_err(|_| "overflow")?;
         debug!("high: {}, low: {}", high, low);
         info!(
-            "Testing {} bitflips with {} iterations",
-            currentmod, iterations
+            "C[{}/{}] => Testing adding {} to C[{}] with {} iterations.",
+            index_ij,
+            FRODO::C::len()-1,
+            currentmod,
+            index_ij,
+            iterations
         );
         let time = mod_measure::<FRODO>(
             currentmod,
@@ -152,10 +163,20 @@ fn search_modification<FRODO: FrodoKem>(
         if let Some(time) = time {
             debug!("time measurment is {}", time);
             if time >= short_circuit_threshold {
-                info!("+Raising lowerbound to {}", currentmod);
+                info!(
+                    "C[{}/{}] => +Raising lowerbound to {}",
+                    index_ij,
+                    FRODO::C::len()-1,
+                    currentmod
+                );
                 low = currentmod;
             } else {
-                info!("-Lowering upperbound to {}", currentmod);
+                info!(
+                    "C[{}/{}] => -Lowering upperbound to {}",
+                    index_ij,
+                    FRODO::C::len()-1,
+                    currentmod
+                );
                 high = currentmod;
             }
         } else {
@@ -166,7 +187,14 @@ fn search_modification<FRODO: FrodoKem>(
             break low;
         }
     };
-    Ok(maxmod)
+    if high == maxmod {
+        warn!("Upper bound never changed, we might have missed the real threshold modification!");
+    }
+    if low == 0 {
+        warn!("Lower bound never changed, we might have missed the real threshold modification!");
+    }
+
+    Ok(found)
 }
 
 #[logfn_inputs(Trace)]
@@ -204,7 +232,7 @@ pub fn find_e<FRODO: FrodoKem>(
     )?;
     debug!("Warmup time {}", warmuptime.unwrap());
 
-    info!("Running {} iterations with a low {} cipertext modification at the start of C to establish upper bound timing threshold.", iterations, 1);
+    info!("Running {} iterations after modifying ciphertext by adding {} to index 0 of C, to establish upper bound timing threshold.", iterations, 1);
     let threshold_high = mod_measure::<FRODO>(
         1,
         0,
@@ -238,22 +266,32 @@ pub fn find_e<FRODO: FrodoKem>(
         threshold
     );
 
-    info!("Starting binary search for determining maximum modifications to C without changing B.");
+    let mods : Result<Vec<_>, String> = (0..FRODO::C::len()).map(|index_ij|{
+        info!("C[{}/{}] => Starting binary search for determining maximum modifications to C without affecting B, for this index.", index_ij, FRODO::C::len()-1);
 
-    let themod = search_modification::<FRODO>(
-        0,
-        iterations,
-        &measure_source,
-        threshold,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-    )?;
+        let themod = search_modification::<FRODO>(
+            index_ij,
+            iterations,
+            &measure_source,
+            threshold,
+            &mut ciphertext,
+            &mut shared_secret_d,
+            &mut secret_key,
+        )?;
 
-    info!(
-        "{} is the maximum amount of modifications that can be performed without affecting B",
-        themod
-    );
+        info!(
+            "C[{}/{}] => Found {}!",index_ij, FRODO::C::len()-1,
+            themod
+        );
+
+        Ok(themod)
+    }).collect();
+
+    //bailout on error
+    let mods = mods?;
+
+    info!("We have found all mods!");
+    info!("{:?}", mods);
 
     Ok(())
 }
