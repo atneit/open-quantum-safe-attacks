@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use crate as oqs;
+use num::{Integer, NumCast};
 use std::fmt::Debug;
 use std::fmt::Display;
 
@@ -78,6 +79,14 @@ pub trait KemBuf: Debug {
     fn as_mut_slice(&mut self) -> &mut [Self::T];
 }
 
+pub struct FrodoKemParams<T> {
+    pub PARAM_N: T,
+    pub PARAM_NBAR: T,
+    pub PARAM_B: T,
+    pub PARAM_LOGQ: T,
+    pub PARAM_QMAX: T,
+}
+
 pub trait FrodoKem {
     type PublicKey: KemBuf<T = u8>;
     type SecretKey: KemBuf<T = u8>;
@@ -88,7 +97,7 @@ pub trait FrodoKem {
 
     fn name() -> &'static str;
 
-    fn qmax() -> u16;
+    fn params<T: Integer + NumCast>() -> FrodoKemParams<T>;
 
     fn keypair(pk: &mut Self::PublicKey, sk: &mut Self::SecretKey) -> oqs::Result;
     fn encaps(
@@ -168,6 +177,7 @@ macro_rules! bind_frodokems {
     ($($name:ident : {
         PARAMS_N: $N:expr,
         PARAMS_NBAR: $NBAR:expr,
+        PARAMS_B: $B:expr,
         PARAMS_LOGQ: $LOGQ:expr,
         PARAMS_QMAX: $QMAX:expr,
         PublicKey: $PK:ident[$PKlen:expr],
@@ -208,8 +218,15 @@ macro_rules! bind_frodokems {
             fn name() -> &'static str {
                 stringify!($name)
             }
-            fn qmax() -> u16 {
-                $QMAX
+
+            fn params<T: Integer+NumCast>() -> FrodoKemParams<T> {
+                FrodoKemParams {
+                    PARAM_N: NumCast::from($N).unwrap(),
+                    PARAM_NBAR: NumCast::from($NBAR).unwrap(),
+                    PARAM_B: NumCast::from($B).unwrap(),
+                    PARAM_LOGQ: NumCast::from($LOGQ).unwrap(),
+                    PARAM_QMAX: NumCast::from($QMAX).unwrap(),
+                }
             }
 
             fn keypair(pk: &mut Self::PublicKey, sk: &mut Self::SecretKey) -> oqs::Result {
@@ -306,6 +323,7 @@ bind_frodokems! (
     FrodoKem640aes: {
         PARAMS_N: 640,
         PARAMS_NBAR: 8,
+        PARAMS_B: 2,
         PARAMS_LOGQ: 15,
         PARAMS_QMAX: 32767,
         PublicKey: FrodoKem640AesPublicKey[oqs::OQS_KEM_frodokem_640_aes_length_public_key as usize],
@@ -324,6 +342,7 @@ bind_frodokems! (
     FrodoKem1344aes: {
         PARAMS_N: 1344,
         PARAMS_NBAR: 8,
+        PARAMS_B: 4,
         PARAMS_LOGQ: 16,
         PARAMS_QMAX: 65535,
         PublicKey: FrodoKem1344AesPublicKey[oqs::OQS_KEM_frodokem_1344_aes_length_public_key as usize],
