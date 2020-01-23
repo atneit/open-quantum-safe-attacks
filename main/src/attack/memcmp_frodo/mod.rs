@@ -10,6 +10,8 @@ pub use baseline::*;
 mod find_e;
 pub use find_e::*;
 
+mod modify_and_measure;
+
 #[derive(StructOpt, Debug, Clone, Copy)]
 #[structopt(name = "measure-source")]
 pub enum MeasureSource {

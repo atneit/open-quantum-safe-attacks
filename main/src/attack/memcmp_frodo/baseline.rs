@@ -1,69 +1,12 @@
+use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
-use crate::utils::display_histogram;
-use histogram::Histogram;
+use crate::utils::{stringify, DevNull, Recorder};
+use hdrhistogram::Histogram;
 use liboqs_rs_bindings as oqs;
-use log::{debug, info, warn};
+use log::{info, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::*;
 use oqs::Result;
-
-#[derive(Debug)]
-enum ModificationType {
-    Noop,
-    Start,
-    End,
-    Uniform,
-}
-
-fn iterate<FRODO: FrodoKem>(
-    public_key: &mut FRODO::PublicKey,
-    secret_key: &mut FRODO::SecretKey,
-    ciphertext: &mut FRODO::Ciphertext,
-    histogram: Option<&mut Histogram>,
-    modification: ModificationType,
-    measure: MeasureSource,
-) -> Result {
-    let mut shared_secret_e = FRODO::SharedSecret::new();
-    let mut shared_secret_d = FRODO::SharedSecret::new();
-    FRODO::encaps(ciphertext, &mut shared_secret_e, public_key)?;
-
-    modify::<FRODO>(ciphertext, modification);
-
-    let diff =
-        measure.measure(|| FRODO::decaps_measure(ciphertext, &mut shared_secret_d, secret_key))?;
-    if let Some(hist) = histogram {
-        if let Some(d) = diff {
-            debug!("Decapsulated shared secret in {} (rdtscp timestamps)", d);
-            hist.increment(d)?;
-        } else {
-            warn!("RDTSCP instructin indicates cpu measurments were performed at different cores!");
-        }
-    }
-    Ok(())
-}
-
-fn modify<FRODO: FrodoKem>(ciphertext: &mut FRODO::Ciphertext, modify: ModificationType) {
-    let slice = ciphertext.as_mut_slice();
-    match modify {
-        ModificationType::Noop => {}
-        ModificationType::Start => {
-            //Flip all bits in first byte
-            slice[0] ^= 255u8;
-        }
-        ModificationType::End => {
-            //Flip all bits in last byte
-            slice[slice.len() - 1] ^= 255u8;
-        }
-        ModificationType::Uniform => {
-            for i in 0..slice.len() {
-                if i % 100 == 0 {
-                    // flipp every bit in every 100 bytes
-                    slice[i] ^= 255;
-                }
-            }
-        }
-    }
-}
 
 #[logfn_inputs(Trace)]
 pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
@@ -82,92 +25,93 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
 
+    info!("Encapsulating shared secret and generating ciphertext");
+    let mut shared_secret_e = FRODO::SharedSecret::new();
+    let mut shared_secret_d = FRODO::SharedSecret::new();
+    FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
+
+    let maxmod = max_mod::<FRODO>();
+
+    info!("Warming up with {} decaps", warmup);
+    let low = mod_measure::<FRODO, _>(
+        maxmod,
+        0,
+        warmup,
+        &measure_source,
+        None,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+        &mut DevNull,
+    )?;
+    info!("Lowest time is {}", low);
+
+    let hist_low = low;
+    let hist_high = low * 2;
+    let hist_sigfig = 5;
+
     // create a histogram with default config
-    let mut hist_unmodified = Histogram::new();
-    let mut hist_modified_start = Histogram::new();
-    let mut hist_modified_end = Histogram::new();
-    let mut hist_modified_uniform = Histogram::new();
-
-    info!("Warming up with {} encap/decap iterations", warmup);
-    for _ in 0..warmup {
-        iterate::<FRODO>(
-            &mut public_key,
-            &mut secret_key,
-            &mut ciphertext,
-            Some(&mut hist_unmodified),
-            ModificationType::Noop,
-            measure_source,
-        )?;
-    }
+    let mut hist_unmodified =
+        Histogram::new_with_bounds(hist_low, hist_high, hist_sigfig).map_err(stringify)?;
+    let mut hist_modified_minor =
+        Histogram::new_with_bounds(hist_low, hist_high, hist_sigfig).map_err(stringify)?;
+    let mut hist_modified_major =
+        Histogram::new_with_bounds(hist_low, hist_high, hist_sigfig).map_err(stringify)?;
 
     info!(
-        "(NOOP) Sampling {} encap/decap iterations without modifications, using \"{:?}\" as source of measurment.",
-        samples,
-        measure_source
+        "(NOMOD) Sampling {} decaps without modifications, using \"{:?}\" as source of measurment.",
+        samples, measure_source
     );
-    for _ in 0..samples {
-        iterate::<FRODO>(
-            &mut public_key,
-            &mut secret_key,
-            &mut ciphertext,
-            Some(&mut hist_unmodified),
-            ModificationType::Noop,
-            measure_source,
-        )?;
-    }
+    let low = mod_measure::<FRODO, _>(
+        0,
+        0,
+        samples,
+        &measure_source,
+        None,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+        &mut hist_unmodified,
+    )?;
+    info!("Lowest time is {}", low);
 
     info!(
-        "(START) Sampling {} encap/decap iterations, modifying first positions, using \"{:?}\" as source of measurment.",
-        samples,
-        measure_source
+        "(MINOR) Sampling {} decaps, modifying C[0] by adding 1.",
+        samples
     );
-    for _ in 0..samples {
-        iterate::<FRODO>(
-            &mut public_key,
-            &mut secret_key,
-            &mut ciphertext,
-            Some(&mut hist_modified_start),
-            ModificationType::Start,
-            measure_source,
-        )?;
-    }
+    let low = mod_measure::<FRODO, _>(
+        1,
+        0,
+        samples,
+        &measure_source,
+        None,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+        &mut hist_modified_minor,
+    )?;
+    info!("Lowest time is {}", low);
 
     info!(
-        "(END) Sampling {} encap/decap iterations, modifying last positions, using \"{:?}\" as source of measurment.",
-        samples,
-        measure_source
+        "(MAJOR) Sampling {} decaps, modifying C[0] by adding {}.",
+        samples, maxmod
     );
-    for _ in 0..samples {
-        iterate::<FRODO>(
-            &mut public_key,
-            &mut secret_key,
-            &mut ciphertext,
-            Some(&mut hist_modified_end),
-            ModificationType::End,
-            measure_source,
-        )?;
-    }
-
-    info!(
-        "(UNIF) Sampling {} encap/decap iterations, modifying uniformly, using \"{:?}\" as source of measurment.",
+    let low = mod_measure::<FRODO, _>(
+        maxmod,
+        0,
         samples,
-        measure_source
-    );
-    for _ in 0..samples {
-        iterate::<FRODO>(
-            &mut public_key,
-            &mut secret_key,
-            &mut ciphertext,
-            Some(&mut hist_modified_uniform),
-            ModificationType::Uniform,
-            measure_source,
-        )?;
-    }
+        &measure_source,
+        None,
+        &mut ciphertext,
+        &mut shared_secret_d,
+        &mut secret_key,
+        &mut hist_modified_major,
+    )?;
+    info!("Lowest time is {}", low);
 
-    display_histogram("NOOP", hist_unmodified);
-    display_histogram("START", hist_modified_start);
-    display_histogram("END", hist_modified_end);
-    display_histogram("UNIF", hist_modified_uniform);
+    hist_unmodified.log(Level::Info, "NOMOD");
+    hist_modified_minor.log(Level::Info, "MINOR");
+    hist_modified_major.log(Level::Info, "MAJOR");
 
     info!("Finished!");
     Ok(())

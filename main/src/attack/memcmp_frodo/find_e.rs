@@ -1,90 +1,12 @@
+use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
+use crate::utils::DevNull;
 use liboqs_rs_bindings as oqs;
-use log::{debug, info, trace, warn};
+use log::{debug, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
 use std::convert::TryInto;
-
-#[derive(Debug)]
-enum Sign<T> {
-    Plus(T),
-    Minus(T),
-}
-
-/// Function that deterministically modifies the input vector.
-///
-/// To undo apply the same modification with Sign::Minus instead.alloc
-/// We operate on modulo q
-#[logfn_inputs(Trace)]
-fn modify<FRODO: FrodoKem>(
-    ct: &mut FRODO::Ciphertext,
-    index_ij: usize,
-    amount: Sign<u16>,
-) -> Result<(), String> {
-    #![allow(non_snake_case)]
-    trace!("started modify!");
-    //Unpack the buffer into a pair of matrices encoded as a vector
-    let (Bp, mut C) = FRODO::unpack(ct)?;
-    let Cslice = C.as_mut_slice();
-
-    let tomod = Cslice[index_ij] as u32;
-
-    let qmax: u32 = FRODO::params().PARAM_QMAX;
-
-    let newval = match amount {
-        Sign::Plus(a) => (tomod + a as u32) % qmax,
-        Sign::Minus(a) => {
-            //add qmax to prevent negative wrapping
-            (tomod + qmax - a as u32) % qmax
-        }
-    };
-
-    Cslice[index_ij] = newval.try_into().unwrap();
-
-    //Repack the matrices into the buffer
-    FRODO::pack(Bp, C, ct)?;
-
-    Ok(())
-}
-
-#[logfn_inputs(Trace)]
-fn mod_measure<FRODO: FrodoKem>(
-    amount: u16,
-    index_ij: usize,
-    iterations: usize,
-    measure_source: &MeasureSource,
-    short_circuit_threshold: Option<u64>,
-    ct: &mut FRODO::Ciphertext,
-    ss: &mut FRODO::SharedSecret,
-    sk: &mut FRODO::SecretKey,
-) -> Result<u64, String> {
-    //Modify
-    modify::<FRODO>(ct, index_ij, Sign::Plus(amount))?;
-    let mut lowest = u64::max_value();
-    'sample: for it in 0..iterations {
-        let m = measure_source.measure(|| FRODO::decaps_measure(ct, ss, sk));
-        if let Some(time) = m? {
-            if time < lowest {
-                lowest = time;
-                if let Some(t) = short_circuit_threshold {
-                    if lowest < t {
-                        info!("C[{}/{}] => Found measurment below threshold already after {} iterations.", index_ij, FRODO::C::len()-1, it);
-                        break 'sample;
-                    }
-                }
-            }
-        };
-    }
-    //Unmodify
-    modify::<FRODO>(ct, index_ij, Sign::Minus(amount))?;
-    Ok(lowest)
-}
-
-fn max_mod<FRODO: FrodoKem>() -> u16 {
-    let params = FRODO::params::<u32>();
-    2u16.pow(params.PARAM_LOGQ - params.PARAM_B)
-}
 
 #[logfn_inputs(Trace)]
 fn search_modification<FRODO: FrodoKem>(
@@ -112,7 +34,7 @@ fn search_modification<FRODO: FrodoKem>(
             index_ij,
             iterations
         );
-        let time = mod_measure::<FRODO>(
+        let time = mod_measure::<FRODO, _>(
             currentmod,
             index_ij,
             iterations,
@@ -121,6 +43,7 @@ fn search_modification<FRODO: FrodoKem>(
             ciphertext,
             shared_secret_d,
             secret_key,
+            &mut DevNull,
         )?;
 
         debug!("time measurment is {}", time);
@@ -178,7 +101,7 @@ pub fn find_e<FRODO: FrodoKem>(
     FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
     info!("Running decryption oracle {} times for warmup.", warmup);
-    let warmuptime = mod_measure::<FRODO>(
+    let warmuptime = mod_measure::<FRODO, _>(
         0,
         0,
         warmup,
@@ -187,11 +110,12 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
+        &mut DevNull,
     )?;
     debug!("Warmup time {}", warmuptime);
 
     info!("Running {} iterations after modifying ciphertext by adding {} to index 0 of C, to establish upper bound timing threshold.", iterations, 1);
-    let threshold_high = mod_measure::<FRODO>(
+    let threshold_high = mod_measure::<FRODO, _>(
         1,
         0,
         iterations,
@@ -200,12 +124,13 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
+        &mut DevNull,
     )?;
 
     let maxmod = max_mod::<FRODO>();
 
     info!("Running {} iterations with max cipertext modification ({}) at index 0 of C to establish lower bound timing threshold.", iterations, maxmod);
-    let threshold_low = mod_measure::<FRODO>(
+    let threshold_low = mod_measure::<FRODO, _>(
         maxmod,
         0,
         iterations,
@@ -214,6 +139,7 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
+        &mut DevNull,
     )?;
 
     let threshold = (threshold_high + threshold_low) / 2;

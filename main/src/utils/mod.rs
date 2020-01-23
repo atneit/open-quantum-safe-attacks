@@ -1,29 +1,61 @@
-use histogram::Histogram;
-use log::info;
+use hdrhistogram::Histogram;
+use log::{log, Level};
+use std::collections::BTreeMap;
+use std::fmt::Debug;
 
-pub fn display_histogram(prefix: &str, histogram: Histogram) {
-    // print percentiles from the histogram
-    info!(
-        "({}) Percentiles: <0.1%: {} ticks, <1.0%: {} ticks, \
-         <10% {} ticks, <%50% {} ticks, <90% {} ticks, \
-         p99: {} ticks, p99.9: {} ticks",
-        prefix,
-        histogram.percentile(0.1).unwrap(),
-        histogram.percentile(1.0).unwrap(),
-        histogram.percentile(10.0).unwrap(),
-        histogram.percentile(50.0).unwrap(),
-        histogram.percentile(90.0).unwrap(),
-        histogram.percentile(99.0).unwrap(),
-        histogram.percentile(99.9).unwrap(),
-    );
+pub trait Recorder: Debug {
+    fn record(&mut self, value: u64) -> Result<(), String>;
+    fn log(&self, lvl: Level, prefix: &str);
+}
 
-    // print additional statistics
-    info!(
-        "({}) Latency (ticks): Min: {} Avg: {} Max: {} StdDev: {}",
-        prefix,
-        histogram.minimum().unwrap(),
-        histogram.mean().unwrap(),
-        histogram.maximum().unwrap(),
-        histogram.stddev().unwrap(),
-    );
+#[derive(Debug)]
+pub struct SaveAllRecorder {
+    store: BTreeMap<u64, u16>,
+}
+
+#[derive(Debug)]
+pub struct DevNull;
+
+impl Recorder for Histogram<u64> {
+    fn record(&mut self, value: u64) -> Result<(), String> {
+        self.record(value).map_err(stringify)
+    }
+
+    fn log(&self, lvl: Level, prefix: &str) {
+        // print percentiles from the histogram
+        for v in self.iter_recorded() {
+            log!(
+                lvl,
+                "({}) {}'th percentile of data is {} with {} samples",
+                prefix,
+                v.percentile(),
+                v.value_iterated_to(),
+                v.count_at_value()
+            );
+        }
+    }
+}
+
+impl Recorder for DevNull {
+    fn record(&mut self, _value: u64) -> Result<(), String> {
+        Ok(())
+    }
+    fn log(&self, _lvl: Level, _prefix: &str) {}
+}
+
+impl Recorder for SaveAllRecorder {
+    fn record(&mut self, value: u64) -> Result<(), String> {
+        let counter = self.store.entry(value).or_insert(0);
+        *counter += 1;
+        Ok(())
+    }
+    fn log(&self, lvl: Level, prefix: &str) {
+        for (key, value) in &self.store {
+            log!(lvl, "({}) {}\t: {}", prefix, key, value);
+        }
+    }
+}
+
+pub fn stringify<T: Debug>(t: T) -> String {
+    format!("{:?}", t)
 }
