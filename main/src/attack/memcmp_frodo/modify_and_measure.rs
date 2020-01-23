@@ -1,5 +1,5 @@
 use super::MeasureSource;
-use crate::utils::Recorder;
+use crate::utils::Rec;
 use liboqs_rs_bindings as oqs;
 use log::{info, trace};
 use log_derive::logfn_inputs;
@@ -54,7 +54,7 @@ pub fn modify<FRODO: FrodoKem>(
 }
 
 #[logfn_inputs(Trace)]
-pub fn mod_measure<FRODO: FrodoKem, R: Recorder>(
+pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
     amount: u16,
     index_ij: usize,
     iterations: usize,

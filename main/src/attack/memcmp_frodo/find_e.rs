@@ -1,6 +1,6 @@
 use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
-use crate::utils::DevNull;
+use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
 use log::{debug, info, warn};
 use log_derive::logfn_inputs;
@@ -43,7 +43,7 @@ fn search_modification<FRODO: FrodoKem>(
             ciphertext,
             shared_secret_d,
             secret_key,
-            &mut DevNull,
+            &mut Recorder::devnull(),
         )?;
 
         debug!("time measurment is {}", time);
@@ -110,7 +110,7 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut DevNull,
+        &mut Recorder::devnull(),
     )?;
     debug!("Warmup time {}", warmuptime);
 
@@ -124,7 +124,7 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut DevNull,
+        &mut Recorder::devnull(),
     )?;
 
     let maxmod = max_mod::<FRODO>();
@@ -139,7 +139,7 @@ pub fn find_e<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut DevNull,
+        &mut Recorder::devnull(),
     )?;
 
     let threshold = (threshold_high + threshold_low) / 2;

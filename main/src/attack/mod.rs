@@ -2,6 +2,7 @@ mod memcmp_frodo;
 
 use liboqs_rs_bindings::frodokem::{FrodoKem1344aes, FrodoKem640aes};
 use log_derive::logfn_inputs;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -19,6 +20,10 @@ pub enum Attacks {
         /// Number of samples to run
         #[structopt(short, long)]
         samples: usize,
+
+        /// Save measurments to a csv file
+        #[structopt(short("f"), long)]
+        save: Option<PathBuf>,
 
         /// Measurment source, either external, internal or oracle
         #[structopt(short, long)]
@@ -64,6 +69,7 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
             samples,
             warmup,
             measure_source,
+            save,
         } => {
             let f = match params {
                 FrodoParams::FrodoKem640aes => {
@@ -74,7 +80,7 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
                 }
             };
 
-            f(samples, warmup, measure_source)
+            f(samples, warmup, measure_source, save)
         }
         Attacks::MemcmpFrodoFindE {
             params,
