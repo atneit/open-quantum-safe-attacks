@@ -14,10 +14,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 data = pd.read_csv(csvname, sep=',', header=0)
-for col in columns:
+
+def usecol(col):
     d = data[col]
     last = int(len(d) * percentage)
-    sns.kdeplot(data[col][0:last], label=col, cut=0)
+    return d[0:last]
+
+
+for col in columns:
+    sns.distplot(usecol(col), label=col, bins=80)
 
 plt.legend()
 plt.show()
