@@ -21,8 +21,13 @@ def usecol(col):
     return d[0:last]
 
 
+axis = None
 for col in columns:
-    sns.distplot(usecol(col), label=col, bins=80)
+    d = usecol(col)
+    axis = sns.kdeplot(d, label=col, cut=0, ax=axis)
+    axis = sns.rugplot(d[0:1], ax=axis)
+
+axis.autoscale()
 
 plt.legend()
 plt.show()
