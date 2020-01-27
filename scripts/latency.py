@@ -20,12 +20,15 @@ def usecol(col):
     last = int(len(d) * percentage)
     return d[0:last]
 
+colors = [(255,0,0,255)]
 
 axis = None
+height = 0
 for col in columns:
+    height += 0.05
     d = usecol(col)
     axis = sns.kdeplot(d, label=col, cut=0, ax=axis)
-    axis = sns.rugplot(d[0:1], ax=axis)
+    axis = sns.rugplot([data[col].median()], ax=axis, height=height)
 
 axis.autoscale()
 

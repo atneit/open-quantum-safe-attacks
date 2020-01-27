@@ -1,2 +1,3 @@
 target
 run.log
+data/*.csv

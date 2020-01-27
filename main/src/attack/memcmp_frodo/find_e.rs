@@ -39,11 +39,10 @@ fn search_modification<FRODO: FrodoKem>(
             index_ij,
             iterations,
             &measure_source,
-            Some(short_circuit_threshold),
             ciphertext,
             shared_secret_d,
             secret_key,
-            &mut Recorder::devnull(),
+            &mut Recorder::medianval(format!("MEDIAN[{}]{{{}}}", index_ij, currentmod)),
         )?;
 
         debug!("time measurment is {}", time);
@@ -106,40 +105,40 @@ pub fn find_e<FRODO: FrodoKem>(
         0,
         warmup,
         &measure_source,
-        None,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut Recorder::devnull(),
+        &mut Recorder::minval(),
     )?;
     debug!("Warmup time {}", warmuptime);
 
-    info!("Running {} iterations after modifying ciphertext by adding {} to index 0 of C, to establish upper bound timing threshold.", iterations, 1);
+    let last_index = FRODO::C::len() - 1;
+    let lowmod = 1;
+
+    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, last_index, lowmod);
     let threshold_high = mod_measure::<FRODO, _>(
-        1,
-        0,
+        lowmod,
+        last_index,
         iterations,
         &measure_source,
-        None,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut Recorder::devnull(),
+        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, lowmod)),
     )?;
 
     let maxmod = max_mod::<FRODO>();
 
-    info!("Running {} iterations with max cipertext modification ({}) at index 0 of C to establish lower bound timing threshold.", iterations, maxmod);
+    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
     let threshold_low = mod_measure::<FRODO, _>(
         maxmod,
-        0,
+        last_index,
         iterations,
         &measure_source,
-        None,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut Recorder::devnull(),
+        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, maxmod)),
     )?;
 
     let threshold = (threshold_high + threshold_low) / 2;

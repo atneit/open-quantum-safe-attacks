@@ -40,11 +40,10 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         0,
         warmup,
         &measure_source,
-        None,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut Recorder::devnull(),
+        &mut Recorder::minval(),
     )?;
     info!("Lowest time is {}", low);
     let mut rec_unmodified = Recorder::saveall("NOMOD");
@@ -58,7 +57,6 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         0,
         samples,
         &measure_source,
-        None,
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
@@ -83,7 +81,6 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
             *i,
             samples,
             &measure_source,
-            None,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
@@ -100,7 +97,6 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
             *i,
             samples,
             &measure_source,
-            None,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,

@@ -1,6 +1,7 @@
 use csv;
 use hdrhistogram::Histogram;
 use log::{log, Level};
+use medianheap;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::Path;
@@ -16,13 +17,13 @@ pub struct RecIterSaveAll<'a> {
     current: Option<(u64, u16)>,
 }
 
-pub struct RecDevNullIter;
+pub struct RecMinValIter;
 
-impl Recorder<DevNull> {
-    pub fn devnull() -> Recorder<DevNull> {
+impl Recorder<MinVal> {
+    pub fn minval() -> Recorder<MinVal> {
         Recorder {
             name: String::new(),
-            bknd: DevNull,
+            bknd: MinVal(u64::max_value()),
         }
     }
 }
@@ -46,12 +47,22 @@ impl Recorder<SaveAllRecorder> {
     }
 }
 
+impl Recorder<medianheap::MedianHeap<u64>> {
+    pub fn medianval<S: ToString>(name: S) -> Recorder<medianheap::MedianHeap<u64>> {
+        Recorder {
+            name: name.to_string(),
+            bknd: medianheap::MedianHeap::new(),
+        }
+    }
+}
+
 pub trait Rec<'a>: Debug {
     type Iter: Iterator<Item = u64>;
     fn record(&mut self, value: u64) -> Result<(), String>;
     fn log(&self, lvl: Level, prefix: &str);
     fn name(&self) -> &str;
     fn iter(&'a self) -> Self::Iter;
+    fn aggregated_value(&self) -> u64;
 }
 
 pub trait RecorderBackend: Debug {}
@@ -62,14 +73,15 @@ pub struct SaveAllRecorder {
 }
 
 #[derive(Debug)]
-pub struct DevNull;
+pub struct MinVal(u64);
 
 impl RecorderBackend for Histogram<u64> {}
-impl RecorderBackend for DevNull {}
+impl RecorderBackend for MinVal {}
 impl RecorderBackend for SaveAllRecorder {}
+impl RecorderBackend for medianheap::MedianHeap<u64> {}
 
 impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
-    type Iter = RecDevNullIter;
+    type Iter = RecMinValIter;
 
     fn record(&mut self, value: u64) -> Result<(), String> {
         self.bknd.record(value).map_err(stringify)
@@ -96,6 +108,10 @@ impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
     fn iter(&'a self) -> Self::Iter {
         unimplemented!();
     }
+
+    fn aggregated_value(&self) -> u64 {
+        self.bknd.mean() as u64
+    }
 }
 
 impl SaveAllRecorder {
@@ -106,9 +122,12 @@ impl SaveAllRecorder {
     }
 }
 
-impl<'a> Rec<'a> for Recorder<DevNull> {
-    type Iter = RecDevNullIter;
-    fn record(&mut self, _value: u64) -> Result<(), String> {
+impl<'a> Rec<'a> for Recorder<MinVal> {
+    type Iter = RecMinValIter;
+    fn record(&mut self, value: u64) -> Result<(), String> {
+        if value < self.bknd.0 {
+            self.bknd.0 = value;
+        }
         Ok(())
     }
     fn log(&self, _lvl: Level, _prefix: &str) {}
@@ -119,6 +138,10 @@ impl<'a> Rec<'a> for Recorder<DevNull> {
 
     fn iter(&'a self) -> Self::Iter {
         unimplemented!();
+    }
+
+    fn aggregated_value(&self) -> u64 {
+        0
     }
 }
 
@@ -146,11 +169,38 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
             current: None,
         }
     }
+
+    fn aggregated_value(&self) -> u64 {
+        unimplemented!();
+    }
+}
+
+impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
+    type Iter = RecMinValIter;
+    fn record(&mut self, value: u64) -> Result<(), String> {
+        self.bknd.push(value);
+        Ok(())
+    }
+    fn log(&self, lvl: Level, prefix: &str) {
+        log!(lvl, "({}) median: {}", prefix, self.bknd.median().unwrap());
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn iter(&'a self) -> Self::Iter {
+        unimplemented!();
+    }
+
+    fn aggregated_value(&self) -> u64 {
+        self.bknd.median().unwrap()
+    }
 }
 
 /// Iterator that iterates through all recorded values.
 /// In this case it will always yield None.
-impl Iterator for RecDevNullIter {
+impl Iterator for RecMinValIter {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {

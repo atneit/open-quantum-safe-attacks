@@ -1,7 +1,7 @@
 use super::MeasureSource;
 use crate::utils::Rec;
 use liboqs_rs_bindings as oqs;
-use log::{info, trace};
+use log::trace;
 use log_derive::logfn_inputs;
 use oqs::frodokem::{FrodoKem, KemBuf};
 use std::convert::TryInto;
@@ -59,7 +59,6 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
     index_ij: usize,
     iterations: usize,
     measure_source: &MeasureSource,
-    short_circuit_threshold: Option<u64>,
     ct: &mut FRODO::Ciphertext,
     ss: &mut FRODO::SharedSecret,
     sk: &mut FRODO::SecretKey,
@@ -67,23 +66,13 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
 ) -> Result<u64, String> {
     //Modify
     modify::<FRODO>(ct, index_ij, Sign::Plus(amount))?;
-    let mut lowest = u64::max_value();
-    'sample: for it in 0..iterations {
+    'sample: for _ in 0..iterations {
         let m = measure_source.measure(|| FRODO::decaps_measure(ct, ss, sk));
         if let Some(time) = m? {
-            if time < lowest {
-                lowest = time;
-                if let Some(t) = short_circuit_threshold {
-                    if lowest < t {
-                        info!("C[{}/{}] => Found measurment below threshold already after {} iterations.", index_ij, FRODO::C::len()-1, it);
-                        break 'sample;
-                    }
-                }
-            }
             recorder.record(time)?;
         };
     }
     //Unmodify
     modify::<FRODO>(ct, index_ij, Sign::Minus(amount))?;
-    Ok(lowest)
+    Ok(recorder.aggregated_value())
 }
