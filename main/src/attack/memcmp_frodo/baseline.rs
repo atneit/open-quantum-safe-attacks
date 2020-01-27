@@ -3,7 +3,7 @@ use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::save_to_file;
 use crate::utils::{Rec, Recorder};
 use liboqs_rs_bindings as oqs;
-use log::{info, Level};
+use log::{info, warn, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::*;
 use oqs::Result;
@@ -33,6 +33,7 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
     FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
     let maxmod = max_mod::<FRODO>();
+    warn!("TODO: check if max_mod is correctly used here");
 
     info!("Warming up with {} decaps", warmup);
     let low = mod_measure::<FRODO, _>(

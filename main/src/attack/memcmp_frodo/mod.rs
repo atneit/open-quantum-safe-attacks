@@ -7,10 +7,14 @@ use structopt::StructOpt;
 mod baseline;
 pub use baseline::*;
 
-mod find_e;
-pub use find_e::*;
+mod crack_s;
+pub use crack_s::*;
 
 mod modify_and_measure;
+pub use modify_and_measure::*;
+
+mod profile;
+pub use profile::*;
 
 #[derive(StructOpt, Debug, Clone, Copy)]
 #[structopt(name = "measure-source")]

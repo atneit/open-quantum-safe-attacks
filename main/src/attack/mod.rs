@@ -29,13 +29,17 @@ pub enum Attacks {
         #[structopt(short, long)]
         measure_source: memcmp_frodo::MeasureSource,
     },
-    MemcmpFrodoFindE {
+    MemcmpFrodoCrackS {
         #[structopt(subcommand, name = "frodo-params")]
         params: FrodoParams,
 
         /// Number of warmup iterations to run before starting sampling
         #[structopt(short, long)]
         warmup: usize,
+
+        /// Number of iterations to measure when profiling.
+        #[structopt(short, long)]
+        profiling: usize,
 
         /// Number of iterations to measure before making a decision.
         #[structopt(short, long)]
@@ -82,18 +86,19 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
 
             f(samples, warmup, measure_source, save)
         }
-        Attacks::MemcmpFrodoFindE {
+        Attacks::MemcmpFrodoCrackS {
             params,
             warmup,
+            profiling,
             iterations,
             measure_source,
         } => {
             let f = match params {
-                FrodoParams::FrodoKem640aes => memcmp_frodo::find_e::<FrodoKem640aes>,
-                FrodoParams::FrodoKem1344aes => memcmp_frodo::find_e::<FrodoKem1344aes>,
+                FrodoParams::FrodoKem640aes => memcmp_frodo::crack_s::<FrodoKem640aes>,
+                FrodoParams::FrodoKem1344aes => memcmp_frodo::crack_s::<FrodoKem1344aes>,
             };
 
-            f(warmup, iterations, measure_source)
+            f(warmup, iterations, profiling, measure_source)
         }
     }
 }

