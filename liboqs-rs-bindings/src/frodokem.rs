@@ -94,6 +94,7 @@ pub trait FrodoKem {
     type SharedSecret: KemBuf<T = u8>;
     type Bp: KemBuf<T = u16>;
     type C: KemBuf<T = u16>;
+    type Eppp: KemBuf<T = u16>;
 
     fn name() -> &'static str;
 
@@ -117,6 +118,7 @@ pub trait FrodoKem {
     ) -> std::result::Result<InternalMeasurments, String>;
     fn unpack(ct: &mut Self::Ciphertext) -> std::result::Result<(Self::Bp, Self::C), String>;
     fn pack(bp: Self::Bp, c: Self::C, into: &mut Self::Ciphertext) -> oqs::Result;
+    fn calculate_Eppp(ct: &mut Self::Ciphertext, sk: &mut Self::SecretKey) -> Result<Self::Eppp, String>;
 }
 
 macro_rules! impl_kembuf {
@@ -166,13 +168,6 @@ macro_rules! impl_kembuf {
     };
 }
 
-/*make_kembuf!(FrodoKem640AesPublicKey; u8; oqs::OQS_KEM_frodokem_640_aes_length_public_key);
-make_kembuf!(FrodoKem640AesSecretKey; u8; oqs::OQS_KEM_frodokem_640_aes_length_secret_key);
-make_kembuf!(FrodoKem640AesCiphertext; u8; oqs::OQS_KEM_frodokem_640_aes_length_ciphertext);
-make_kembuf!(FrodoKem640AesSharedSecret; u8; oqs::OQS_KEM_frodokem_640_aes_length_shared_secret);
-make_kembuf!(FrodoKem640AesBp; u16; PARAMS_640_N * PARAMS_NBAR);
-make_kembuf!(FrodoKem640AesC; u16; PARAMS_NBAR * PARAMS_NBAR);*/
-
 macro_rules! bind_frodokems {
     ($($name:ident : {
         PARAMS_N: $N:expr,
@@ -186,10 +181,12 @@ macro_rules! bind_frodokems {
         SharedSecret : $SS:ident[$SSlen:expr],
         Bp : $Bp:ident,
         C : $C:ident,
+        Eppp: $Eppp:ident,
         keypair: $keypair:ident,
         encaps: $encaps:ident,
         decaps: $decaps:ident,
         decaps_measure: $decaps_measure:ident,
+        calculate_Eppp: $calculate_Eppp:ident,
         unpack: $unpack:ident,
         pack: $pack:ident,
     }),+) => {$(
@@ -200,12 +197,14 @@ macro_rules! bind_frodokems {
         pub struct $SS([u8; $SSlen as usize]);
         pub struct $Bp([u16; $N * $NBAR]);
         pub struct $C([u16; $NBAR *$NBAR]);
+        pub struct $Eppp([u16; $NBAR *$NBAR]);
         impl_kembuf!($PK; u8;$PKlen);
         impl_kembuf!($SK; u8; $SKlen);
         impl_kembuf!($CT; u8; $CTlen);
         impl_kembuf!($SS; u8; $SSlen);
         impl_kembuf!($Bp; u16; $N * $NBAR);
         impl_kembuf!($C; u16; $NBAR *$NBAR);
+        impl_kembuf!($Eppp; u16; $NBAR *$NBAR);
 
         impl FrodoKem for $name {
             type PublicKey = $PK;
@@ -214,6 +213,7 @@ macro_rules! bind_frodokems {
             type SharedSecret = $SS;
             type Bp = $Bp;
             type C = $C;
+            type Eppp = $Eppp;
 
             fn name() -> &'static str {
                 stringify!($name)
@@ -315,6 +315,15 @@ macro_rules! bind_frodokems {
                 calloqs!($pack(c2, c2_outlen, c_input, c_inlen, lsb))?;
                 Ok(())
             }
+
+            fn calculate_Eppp(ct: &mut Self::Ciphertext, sk: &mut Self::SecretKey) -> Result<Self::Eppp, String> {
+                let mut Eppp = Self::Eppp::new();
+                let ct = ct.as_mut_ptr();
+                let sk = sk.as_mut_ptr();
+                let eppp = Eppp.as_mut_ptr();
+                oqs::calloqs!($calculate_Eppp(ct, sk, eppp))?;
+                Ok(Eppp)
+            }
         }
     )*}
 }
@@ -332,10 +341,12 @@ bind_frodokems! (
         SharedSecret : FrodoKem640AesSharedSecret[oqs::OQS_KEM_frodokem_640_aes_length_shared_secret as usize],
         Bp : FrodoKem640AesBp,
         C : FrodoKem640AesC,
+        Eppp : FrodoKem640AesEppp,
         keypair: OQS_KEM_frodokem_640_aes_keypair,
         encaps: OQS_KEM_frodokem_640_aes_encaps,
         decaps: OQS_KEM_frodokem_640_aes_decaps,
         decaps_measure: OQS_KEM_frodokem_640_aes_decaps_measure,
+        calculate_Eppp: OQS_KEM_frodokem_640_aes_get_Eppp,
         unpack: oqs_kem_frodokem_640_aes_unpack,
         pack: oqs_kem_frodokem_640_aes_pack,
     },
@@ -351,10 +362,12 @@ bind_frodokems! (
         SharedSecret : FrodoKem1344AesSharedSecret[oqs::OQS_KEM_frodokem_1344_aes_length_shared_secret as usize],
         Bp : FrodoKem1344AesBp,
         C : FrodoKem1344AesC,
+        Eppp : FrodoKem1344AesEppp,
         keypair: OQS_KEM_frodokem_1344_aes_keypair,
         encaps: OQS_KEM_frodokem_1344_aes_encaps,
         decaps: OQS_KEM_frodokem_1344_aes_decaps,
         decaps_measure: OQS_KEM_frodokem_1344_aes_decaps_measure,
+        calculate_Eppp: OQS_KEM_frodokem_1344_aes_get_Eppp,
         unpack: oqs_kem_frodokem_1344_aes_unpack,
         pack: oqs_kem_frodokem_1344_aes_pack,
     }

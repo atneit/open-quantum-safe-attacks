@@ -12,7 +12,7 @@
                 "target create ${workspaceFolder}/target/debug/oqs-afw"
             ],
             "processCreateCommands": [
-                "process launch -- -l trace attack memcmp-frodo-find-e -m oracle -i 1 -w 1 frodo-kem640aes"
+                "process launch -- -l info attack memcmp-frodo-crack-s -i 1 -m oracle -p 1 -w 1 frodo-kem640aes"
             ]
         },
     ]

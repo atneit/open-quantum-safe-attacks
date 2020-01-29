@@ -13,7 +13,7 @@ pub enum Sign<T> {
 }
 
 /// Returns the element-wise maximum error correction capability
-pub fn max_mod<FRODO: FrodoKem>() -> u16 {
+pub fn error_correction_limit<FRODO: FrodoKem>() -> u16 {
     let params = FRODO::params::<u32>();
     2u16.pow(params.PARAM_LOGQ - params.PARAM_B - 1)
 }

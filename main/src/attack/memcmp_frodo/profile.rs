@@ -2,7 +2,7 @@ use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
-use log::{debug, info, warn};
+use log::{debug, info};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
@@ -54,8 +54,7 @@ pub fn profile<FRODO: FrodoKem>(
         &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, lowmod)),
     )?;
 
-    let maxmod = max_mod::<FRODO>();
-    warn!("TODO: check if max_mod is correctly used here");
+    let maxmod = error_correction_limit::<FRODO>() * 2;
 
     info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
     let threshold_low = mod_measure::<FRODO, _>(
