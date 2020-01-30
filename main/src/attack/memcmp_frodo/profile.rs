@@ -2,10 +2,12 @@ use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
-use log::{debug, info};
+use log::{debug, error, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
+
+const THRESHOLD_WARN: u64 = 2000;
 
 #[logfn_inputs(Trace)]
 pub fn profile<FRODO: FrodoKem>(
@@ -68,10 +70,24 @@ pub fn profile<FRODO: FrodoKem>(
         &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, maxmod)),
     )?;
 
-    let threshold = (threshold_high + threshold_low) / 2;
+    if threshold_high <= threshold_low {
+        error!(
+            "threshold high ({}) <= threshold low ({})",
+            threshold_high, threshold_low
+        );
+        return Err("Could not make a good enough profile, try again with a higher profiling iteration count!".to_string());
+    }
+
+    let diff = threshold_high - threshold_low;
+
+    if diff < THRESHOLD_WARN {
+        warn!("Diff ({}) < ", THRESHOLD_WARN);
+    }
+
+    let threshold = threshold_low + (diff / 2);
     info!(
-        "Using ({}+{})/2={} as threshold value, everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
-        threshold
+        "Using ({}+{})/2={} as threshold value (diff: {}), everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
+        threshold, threshold_high - threshold_low
     );
 
     Ok(threshold)

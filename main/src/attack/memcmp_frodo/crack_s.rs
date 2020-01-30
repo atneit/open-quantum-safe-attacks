@@ -3,7 +3,7 @@ use crate::attack::memcmp_frodo::profile::profile;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
@@ -26,8 +26,8 @@ fn search_modification<FRODO: FrodoKem>(
         let currentmod: u16 = ((high as usize + low as usize) / 2)
             .try_into()
             .map_err(|_| "overflow")?;
-        debug!("high: {}, low: {}", high, low);
-        info!(
+        trace!("high: {}, low: {}", high, low);
+        debug!(
             "C[{}/{}] => Testing adding {} to C[{}] with {} iterations.",
             index_ij,
             FRODO::C::len() - 1,
@@ -48,7 +48,7 @@ fn search_modification<FRODO: FrodoKem>(
 
         debug!("time measurment is {}", time);
         if time >= short_circuit_threshold {
-            info!(
+            debug!(
                 "C[{}/{}] => +Raising lowerbound to {}",
                 index_ij,
                 FRODO::C::len() - 1,
@@ -56,7 +56,7 @@ fn search_modification<FRODO: FrodoKem>(
             );
             low = currentmod;
         } else {
-            info!(
+            debug!(
                 "C[{}/{}] => -Lowering upperbound to {}",
                 index_ij,
                 FRODO::C::len() - 1,
@@ -112,7 +112,7 @@ pub fn crack_s<FRODO: FrodoKem>(
     let nbar: usize = FRODO::params().PARAM_NBAR;
     let mbar = nbar;
     let err_corr_limit = error_correction_limit::<FRODO>();
-    let nbr_encaps = 1;
+    let nbr_encaps = 10;
     let i = mbar - 1;
 
     for t in 0..nbr_encaps {
@@ -136,10 +136,17 @@ pub fn crack_s<FRODO: FrodoKem>(
             )?;
 
             let Eppp_ij = err_corr_limit - x0;
-            info!(
-                "Found -E'''[{},{}]={} expected: {}",
-                i, j, Eppp_ij, expectedEppp[index]
-            );
+            if Eppp_ij - 1 != expectedEppp[index] {
+                warn!(
+                    "Found -E'''[{},{}]={} expected: {}",
+                    i, j, Eppp_ij, expectedEppp[index]
+                )
+            } else {
+                info!(
+                    "Found -E'''[{},{}]={} expected: {}",
+                    i, j, Eppp_ij, expectedEppp[index]
+                );
+            }
         }
     }
 

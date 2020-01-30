@@ -1,4 +1,5 @@
 use liboqs_rs_bindings as oqs;
+use log::warn;
 use oqs::frodokem::InternalMeasurments;
 use std::arch::x86_64::__rdtscp;
 use std::str::FromStr;
@@ -55,6 +56,7 @@ impl MeasureSource {
                 if cpu_core_ident_start == cpu_core_ident_stop {
                     Ok(Some(stop - start))
                 } else {
+                    warn!("no measurment, the kernel probably induced a context switch");
                     Ok(None)
                 }
             }

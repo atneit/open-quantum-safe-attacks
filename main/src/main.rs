@@ -1,6 +1,6 @@
 //use liboqs_rs_bindings as oqs;
 
-use log::debug;
+use log::{debug, error};
 use structopt::clap::Shell;
 use structopt::StructOpt;
 
@@ -30,18 +30,21 @@ struct ProgramArgs {
     command: Command,
 }
 
-fn main() -> Result<(), String> {
+fn main() {
     let matches = ProgramArgs::from_args();
     simple_logger::init_with_level(matches.loglevel).unwrap();
     debug!("command line arguments parsed: {:?}", matches);
 
-    match matches.command {
-        Command::Attack(opt) => attack::run(opt)?,
+    let result = match matches.command {
+        Command::Attack(opt) => attack::run(opt),
         Command::Completions { shell } => {
             let mut app = ProgramArgs::clap();
             app.gen_completions("oqs-afw", shell, "./");
+            Ok(())
         }
     };
 
-    Ok(())
+    if let Err(errmsg) = result {
+        error!("Aborting due to error: {}", errmsg);
+    }
 }
