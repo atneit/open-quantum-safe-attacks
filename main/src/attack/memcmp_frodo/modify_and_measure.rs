@@ -1,7 +1,7 @@
 use super::MeasureSource;
 use crate::utils::Rec;
 use liboqs_rs_bindings as oqs;
-use log::trace;
+use log::{trace, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::{FrodoKem, KemBuf};
 use std::convert::TryInto;
@@ -58,13 +58,13 @@ pub fn modify<FRODO: FrodoKem>(
 pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
     amount: u16,
     index_ij: usize,
-    iterations: usize,
+    iterations: u64,
     measure_source: &MeasureSource,
     ct: &mut FRODO::Ciphertext,
     ss: &mut FRODO::SharedSecret,
     sk: &mut FRODO::SecretKey,
-    recorder: &mut R,
-) -> Result<u64, String> {
+    mut recorder: R,
+) -> Result<R, String> {
     //Modify
     modify::<FRODO>(ct, index_ij, Sign::Plus(amount))?;
     'sample: for _ in 0..iterations {
@@ -73,7 +73,16 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
             recorder.record(time)?;
         };
     }
+
+    // We want to keep more than 75% of all values
+    if recorder.len() < (iterations / 4) {
+        warn!(
+            "Recorded {} out of {} iterations!",
+            recorder.len(),
+            iterations
+        );
+    }
     //Unmodify
     modify::<FRODO>(ct, index_ij, Sign::Minus(amount))?;
-    Ok(recorder.aggregated_value())
+    Ok(recorder)
 }

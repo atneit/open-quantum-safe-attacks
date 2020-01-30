@@ -10,6 +10,65 @@ use std::path::Path;
 pub struct Recorder<R: RecorderBackend> {
     name: String,
     bknd: R,
+    counter: u64,
+    min: u64,
+    cutoff: Option<u64>,
+}
+
+impl Recorder<MinVal> {
+    pub fn minval() -> Recorder<MinVal> {
+        Recorder {
+            name: String::new(),
+            bknd: MinVal,
+            counter: 0,
+            min: u64::max_value(),
+            cutoff: None,
+        }
+    }
+}
+
+impl Recorder<Histogram<u64>> {
+    #[allow(dead_code)]
+    pub fn histogram<S: ToString>(
+        name: S,
+        hist: Histogram<u64>,
+        cutoff: Option<u64>,
+    ) -> Recorder<Histogram<u64>> {
+        Recorder {
+            name: name.to_string(),
+            bknd: hist,
+            counter: 0,
+            min: u64::max_value(),
+            cutoff,
+        }
+    }
+}
+
+impl Recorder<SaveAllRecorder> {
+    pub fn saveall<S: ToString>(name: S, cutoff: Option<u64>) -> Recorder<SaveAllRecorder> {
+        Recorder {
+            name: name.to_string(),
+            bknd: SaveAllRecorder::new(),
+            counter: 0,
+            min: u64::max_value(),
+            cutoff,
+        }
+    }
+}
+
+impl Recorder<medianheap::MedianHeap<u64>> {
+    pub fn medianval<S: ToString>(
+        name: S,
+        cutoff: Option<u64>,
+    ) -> Recorder<medianheap::MedianHeap<u64>> {
+        Recorder {
+            name: name.to_string(),
+            bknd: medianheap::MedianHeap::new(),
+            counter: 0,
+            min: u64::max_value(),
+            cutoff,
+        }
+    }
 }
 
 pub struct RecIterSaveAll<'a> {
@@ -19,50 +78,15 @@ pub struct RecIterSaveAll<'a> {
 
 pub struct RecMinValIter;
 
-impl Recorder<MinVal> {
-    pub fn minval() -> Recorder<MinVal> {
-        Recorder {
-            name: String::new(),
-            bknd: MinVal(u64::max_value()),
-        }
-    }
-}
-
-impl Recorder<Histogram<u64>> {
-    #[allow(dead_code)]
-    pub fn histogram<S: ToString>(name: S, hist: Histogram<u64>) -> Recorder<Histogram<u64>> {
-        Recorder {
-            name: name.to_string(),
-            bknd: hist,
-        }
-    }
-}
-
-impl Recorder<SaveAllRecorder> {
-    pub fn saveall<S: ToString>(name: S) -> Recorder<SaveAllRecorder> {
-        Recorder {
-            name: name.to_string(),
-            bknd: SaveAllRecorder::new(),
-        }
-    }
-}
-
-impl Recorder<medianheap::MedianHeap<u64>> {
-    pub fn medianval<S: ToString>(name: S) -> Recorder<medianheap::MedianHeap<u64>> {
-        Recorder {
-            name: name.to_string(),
-            bknd: medianheap::MedianHeap::new(),
-        }
-    }
-}
-
 pub trait Rec<'a>: Debug {
     type Iter: Iterator<Item = u64>;
     fn record(&mut self, value: u64) -> Result<(), String>;
-    fn log(&self, lvl: Level, prefix: &str);
+    fn log(&self, lvl: Level);
     fn name(&self) -> &str;
     fn iter(&'a self) -> Self::Iter;
-    fn aggregated_value(&self) -> u64;
+    fn len(&self) -> u64;
+    fn min(&self) -> Result<u64, String>;
+    fn aggregated_value(&self) -> Result<u64, String>;
 }
 
 pub trait RecorderBackend: Debug {}
@@ -70,10 +94,11 @@ pub trait RecorderBackend: Debug {}
 #[derive(Debug)]
 pub struct SaveAllRecorder {
     store: BTreeMap<u64, u16>,
+    //median: medianheap::MedianHeap<u64>,
 }
 
 #[derive(Debug)]
-pub struct MinVal(u64);
+pub struct MinVal;
 
 impl RecorderBackend for Histogram<u64> {}
 impl RecorderBackend for MinVal {}
@@ -84,16 +109,29 @@ impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
     type Iter = RecMinValIter;
 
     fn record(&mut self, value: u64) -> Result<(), String> {
-        self.bknd.record(value).map_err(stringify)
+        if value < self.min {
+            self.min = value;
+        }
+        if let Some(cutoff) = self.cutoff {
+            if value < cutoff {
+                self.counter += 1;
+                self.bknd.record(value).map_err(stringify)
+            } else {
+                Ok(())
+            }
+        } else {
+            self.counter += 1;
+            self.bknd.record(value).map_err(stringify)
+        }
     }
 
-    fn log(&self, lvl: Level, prefix: &str) {
+    fn log(&self, lvl: Level) {
         // print percentiles from the histogram
         for v in self.bknd.iter_recorded() {
             log!(
                 lvl,
                 "({}) {}'th percentile of data is {} with {} samples",
-                prefix,
+                self.name,
                 v.percentile(),
                 v.value_iterated_to(),
                 v.count_at_value()
@@ -109,8 +147,20 @@ impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
         unimplemented!();
     }
 
-    fn aggregated_value(&self) -> u64 {
-        self.bknd.mean() as u64
+    fn len(&self) -> u64 {
+        self.counter
+    }
+
+    fn min(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from("min() called without any recorded values!"))
+        }
+    }
+
+    fn aggregated_value(&self) -> Result<u64, String> {
+        Ok(self.bknd.mean() as u64)
     }
 }
 
@@ -118,6 +168,7 @@ impl SaveAllRecorder {
     pub fn new() -> SaveAllRecorder {
         SaveAllRecorder {
             store: BTreeMap::new(),
+            //median: medianheap::MedianHeap::new(),
         }
     }
 }
@@ -125,12 +176,13 @@ impl SaveAllRecorder {
 impl<'a> Rec<'a> for Recorder<MinVal> {
     type Iter = RecMinValIter;
     fn record(&mut self, value: u64) -> Result<(), String> {
-        if value < self.bknd.0 {
-            self.bknd.0 = value;
+        self.counter += 1;
+        if value < self.min {
+            self.min = value;
         }
         Ok(())
     }
-    fn log(&self, _lvl: Level, _prefix: &str) {}
+    fn log(&self, _lvl: Level) {}
 
     fn name(&self) -> &str {
         &self.name
@@ -140,8 +192,26 @@ impl<'a> Rec<'a> for Recorder<MinVal> {
         unimplemented!();
     }
 
-    fn aggregated_value(&self) -> u64 {
-        0
+    fn len(&self) -> u64 {
+        self.counter
+    }
+
+    fn min(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from("min() called without any recorded values!"))
+        }
+    }
+
+    fn aggregated_value(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from(
+                "aggregated_value() called without any recorded values!",
+            ))
+        }
     }
 }
 
@@ -149,13 +219,28 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
     type Iter = RecIterSaveAll<'a>;
 
     fn record(&mut self, value: u64) -> Result<(), String> {
-        let counter = self.bknd.store.entry(value).or_insert(0);
-        *counter += 1;
+        // SaveAllRecorder ignores the cutoff value, that what it's for.
+        if value < self.min {
+            self.min = value;
+        }
+        if let Some(cutoff) = self.cutoff {
+            if value < cutoff {
+                self.counter += 1;
+                let valcnt = self.bknd.store.entry(value).or_insert(0);
+                *valcnt += 1;
+                //self.bknd.median.push(value);
+            }
+        } else {
+            self.counter += 1;
+            let valcnt = self.bknd.store.entry(value).or_insert(0);
+            *valcnt += 1;
+            //self.bknd.median.push(value);
+        }
         Ok(())
     }
-    fn log(&self, lvl: Level, prefix: &str) {
+    fn log(&self, lvl: Level) {
         for (key, value) in &self.bknd.store {
-            log!(lvl, "({}) {}\t: {}", prefix, key, value);
+            log!(lvl, "({}) {}\t: {}", self.name, key, value);
         }
     }
 
@@ -170,19 +255,57 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
         }
     }
 
-    fn aggregated_value(&self) -> u64 {
-        unimplemented!();
+    fn len(&self) -> u64 {
+        self.counter
+    }
+
+    fn min(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from("min() called without any recorded values!"))
+        }
+    }
+
+    fn aggregated_value(&self) -> Result<u64, String> {
+        return self.min();
+        // if self.counter == 0 {
+        //     return Err(String::from(
+        //         "aggregated_value() called without any recorded values!",
+        //     ));
+        // }
+
+        // self.bknd.median.median().ok_or(String::from(
+        //     "aggregated_value() called without any recorded values!",
+        // ))
     }
 }
 
 impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
     type Iter = RecMinValIter;
     fn record(&mut self, value: u64) -> Result<(), String> {
-        self.bknd.push(value);
+        if value < self.min {
+            self.min = value;
+        }
+        if let Some(cutoff) = self.cutoff {
+            if value < cutoff {
+                self.counter += 1;
+                self.bknd.push(value);
+            }
+        } else {
+            self.counter += 1;
+            self.bknd.push(value);
+        }
+
         Ok(())
     }
-    fn log(&self, lvl: Level, prefix: &str) {
-        log!(lvl, "({}) median: {}", prefix, self.bknd.median().unwrap());
+    fn log(&self, lvl: Level) {
+        log!(
+            lvl,
+            "({}) median: {}",
+            self.name,
+            self.bknd.median().unwrap()
+        );
     }
 
     fn name(&self) -> &str {
@@ -193,8 +316,22 @@ impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
         unimplemented!();
     }
 
-    fn aggregated_value(&self) -> u64 {
-        self.bknd.median().unwrap()
+    fn len(&self) -> u64 {
+        self.counter
+    }
+
+    fn min(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from("min() called without any recorded values!"))
+        }
+    }
+
+    fn aggregated_value(&self) -> Result<u64, String> {
+        self.bknd.median().ok_or(String::from(
+            "aggregated_value called without any recorded values!",
+        ))
     }
 }
 
@@ -257,7 +394,7 @@ impl<I: Iterator<Item = u64>> Iterator for RecordTableIterator<I> {
     }
 }
 
-pub fn save_to_file<'a, R: Rec<'a>>(path: &Path, recorders: &'a Vec<R>) -> Result<(), String> {
+pub fn save_to_csv<'a, R: Rec<'a>>(path: &Path, recorders: &'a Vec<R>) -> Result<(), String> {
     let mut wtr = csv::Writer::from_path(path).map_err(stringify)?;
 
     //Write headers
@@ -287,7 +424,7 @@ fn name() {
     use std::convert::TryInto;
     let mut vr = vec![];
     for i in 0..3 {
-        vr.push(Recorder::saveall(format!("test {}", i)));
+        vr.push(Recorder::saveall(format!("test {}", i), None));
     }
 
     for i in 0..3 {

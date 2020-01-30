@@ -6,7 +6,8 @@ if len(sys.argv) < 4:
     
 csvname = sys.argv[1]
 samplesize = int(sys.argv[2])
-percentage = float(sys.argv[3]) / 100
+percentage = 1  #float(sys.argv[3]) / 100
+maxval = int(sys.argv[3])
 columns = sys.argv[4:]
 
 import numpy as np
@@ -19,7 +20,7 @@ data = pd.read_csv(csvname, sep=',', header=0)
 def usecol(col):
     d = data[col]
     last = int(len(d) * percentage)
-    return d[0:last].sample(samplesize)
+    return d[0:last][d < maxval]#.sample(samplesize)
 
 colors = [(255,0,0,255)]
 

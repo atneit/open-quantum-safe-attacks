@@ -1,6 +1,6 @@
 use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
-use crate::utils::save_to_file;
+use crate::utils::save_to_csv;
 use crate::utils::{Rec, Recorder};
 use liboqs_rs_bindings as oqs;
 use log::{info, Level};
@@ -11,8 +11,8 @@ use std::path::PathBuf;
 
 #[logfn_inputs(Trace)]
 pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
-    samples: usize,
-    warmup: usize,
+    samples: u64,
+    warmup: u64,
     measure_source: MeasureSource,
     save: Option<PathBuf>,
 ) -> Result {
@@ -43,16 +43,16 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut Recorder::minval(),
-    )?;
+        Recorder::minval(),
+    )?
+    .aggregated_value()?;
     info!("Lowest time is {}", low);
-    let mut rec_unmodified = Recorder::saveall("NOMOD");
 
     info!(
         "(NOMOD) Sampling {} decaps without modifications, using \"{:?}\" as source of measurment.",
         samples, measure_source
     );
-    let low = mod_measure::<FRODO, _>(
+    let rec_unmodified = mod_measure::<FRODO, _>(
         0,
         0,
         samples,
@@ -60,23 +60,22 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         &mut ciphertext,
         &mut shared_secret_d,
         &mut secret_key,
-        &mut rec_unmodified,
+        Recorder::saveall("NOMOD", None),
     )?;
+    let low = rec_unmodified.aggregated_value()?;
     info!("Lowest time is {}", low);
-    rec_unmodified.log(Level::Debug, "NOMOD");
+    rec_unmodified.log(Level::Debug);
 
     let mut recorders = vec![rec_unmodified];
 
-    for i in &[0, 7, 15, 23, 31, 39, 47, 55, 63] {
+    for i in &[57, 58, 59, 60, 61, 62, 63] {
         // create a histogram with default config
-        let mut rec_modified_minor = Recorder::saveall(format!("MINOR[{}]", i));
-        let mut rec_modified_major = Recorder::saveall(format!("MAJOR[{}]", i));
 
         info!(
             "(MINOR) Sampling {} decaps, modifying C[{}] by adding 1.",
             samples, i
         );
-        let low = mod_measure::<FRODO, _>(
+        let rec_modified_minor = mod_measure::<FRODO, _>(
             1,
             *i,
             samples,
@@ -84,15 +83,17 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            &mut rec_modified_minor,
+            Recorder::saveall(format!("MINOR[{}]", i), None),
         )?;
-        info!("Lowest time is {}", low);
+        let low = rec_modified_minor.min()?;
+        let median = rec_modified_minor.aggregated_value()?;
+        info!("Lowest time is {}, median: {}", low, median);
 
         info!(
             "(MAJOR) Sampling {} decaps, modifying C[{}] by adding {}.",
             samples, i, maxmod
         );
-        let low = mod_measure::<FRODO, _>(
+        let rec_modified_major = mod_measure::<FRODO, _>(
             maxmod,
             *i,
             samples,
@@ -100,12 +101,14 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            &mut rec_modified_major,
+            Recorder::saveall(format!("MAJOR[{}]", i), None),
         )?;
-        info!("Lowest time is {}", low);
+        let low = rec_modified_minor.min()?;
+        let median = rec_modified_minor.aggregated_value()?;
+        info!("Lowest time is {}, median: {}", low, median);
 
-        rec_modified_minor.log(Level::Debug, "MINOR");
-        rec_modified_major.log(Level::Debug, "MAJOR");
+        rec_modified_minor.log(Level::Debug);
+        rec_modified_major.log(Level::Debug);
 
         recorders.push(rec_modified_minor);
         recorders.push(rec_modified_major);
@@ -113,7 +116,7 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
 
     if let Some(path) = save {
         info!("Saving measurments to file {:?}", path);
-        save_to_file(&path, &recorders)?;
+        save_to_csv(&path, &recorders)?;
     }
 
     info!("Finished!");

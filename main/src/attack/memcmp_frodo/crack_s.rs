@@ -1,6 +1,8 @@
 use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::profile::profile;
+use crate::attack::memcmp_frodo::profile::Profile;
 use crate::attack::memcmp_frodo::MeasureSource;
+use crate::utils::Rec;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
 use log::{debug, info, trace, warn};
@@ -8,13 +10,14 @@ use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
 use std::convert::TryInto;
+use std::path::PathBuf;
 
 #[logfn_inputs(Trace)]
 fn search_modification<FRODO: FrodoKem>(
     index_ij: usize,
-    iterations: usize,
+    iterations: u64,
     measure_source: &MeasureSource,
-    short_circuit_threshold: u64,
+    profile: Profile,
     ciphertext: &mut FRODO::Ciphertext,
     shared_secret_d: &mut FRODO::SharedSecret,
     secret_key: &mut FRODO::SecretKey,
@@ -43,11 +46,15 @@ fn search_modification<FRODO: FrodoKem>(
             ciphertext,
             shared_secret_d,
             secret_key,
-            &mut Recorder::medianval(format!("MEDIAN[{}]{{{}}}", index_ij, currentmod)),
-        )?;
+            Recorder::medianval(
+                format!("MEDIAN[{}]{{{}}}", index_ij, currentmod),
+                Some(profile.cutoff),
+            ),
+        )?
+        .aggregated_value()?;
 
         debug!("time measurment is {}", time);
-        if time >= short_circuit_threshold {
+        if time >= profile.threshold {
             debug!(
                 "C[{}/{}] => +Raising lowerbound to {}",
                 index_ij,
@@ -80,10 +87,11 @@ fn search_modification<FRODO: FrodoKem>(
 
 #[logfn_inputs(Trace)]
 pub fn crack_s<FRODO: FrodoKem>(
-    warmup: usize,
-    iterations: usize,
-    profileiters: usize,
+    warmup: u64,
+    iterations: u64,
+    profileiters: u64,
     measure_source: MeasureSource,
+    save_to_file: Option<PathBuf>,
 ) -> Result<(), String> {
     #![allow(non_snake_case)]
     info!(
@@ -100,12 +108,13 @@ pub fn crack_s<FRODO: FrodoKem>(
     let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
 
-    let threshold = profile::<FRODO>(
+    let profile = profile::<FRODO>(
         warmup,
         profileiters,
         measure_source,
         &mut public_key,
         &mut secret_key,
+        save_to_file,
     )?;
 
     //let n = FRODO::params().PARAM_N;
@@ -125,11 +134,12 @@ pub fn crack_s<FRODO: FrodoKem>(
             // Modify ciphertext at C[nbar-1, j]
             let index = i * nbar + j;
 
+            info!("Starting binary search for Eppp[{},{}]", i, j);
             let x0 = search_modification::<FRODO>(
                 index,
                 iterations,
                 &measure_source,
-                threshold,
+                profile,
                 &mut ciphertext,
                 &mut shared_secret_d,
                 &mut secret_key,
@@ -138,12 +148,12 @@ pub fn crack_s<FRODO: FrodoKem>(
             let Eppp_ij = err_corr_limit - x0;
             if Eppp_ij - 1 != expectedEppp[index] {
                 warn!(
-                    "Found -E'''[{},{}]={} expected: {}",
+                    "Found -Eppp[{},{}]={} expected: {}",
                     i, j, Eppp_ij, expectedEppp[index]
                 )
             } else {
                 info!(
-                    "Found -E'''[{},{}]={} expected: {}",
+                    "Found -Eppp[{},{}]={} expected: {}",
                     i, j, Eppp_ij, expectedEppp[index]
                 );
             }

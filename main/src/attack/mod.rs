@@ -15,11 +15,11 @@ pub enum Attacks {
 
         /// Number of warmup iterations to run before starting sampling
         #[structopt(short, long)]
-        warmup: usize,
+        warmup: u64,
 
         /// Number of samples to run
         #[structopt(short, long)]
-        samples: usize,
+        samples: u64,
 
         /// Save measurments to a csv file
         #[structopt(short("f"), long)]
@@ -35,15 +35,19 @@ pub enum Attacks {
 
         /// Number of warmup iterations to run before starting sampling
         #[structopt(short, long)]
-        warmup: usize,
+        warmup: u64,
 
         /// Number of iterations to measure when profiling.
         #[structopt(short, long)]
-        profiling: usize,
+        profiling: u64,
 
         /// Number of iterations to measure before making a decision.
         #[structopt(short, long)]
-        iterations: usize,
+        iterations: u64,
+
+        /// Save profiling measurments to a csv file
+        #[structopt(short("f"), long("save-profiling"))]
+        save_to_file: Option<PathBuf>,
 
         /// Measurment source, either external, internal or oracle
         #[structopt(short, long)]
@@ -92,13 +96,14 @@ pub fn run(options: AttackOptions) -> Result<(), String> {
             profiling,
             iterations,
             measure_source,
+            save_to_file,
         } => {
             let f = match params {
                 FrodoParams::FrodoKem640aes => memcmp_frodo::crack_s::<FrodoKem640aes>,
                 FrodoParams::FrodoKem1344aes => memcmp_frodo::crack_s::<FrodoKem1344aes>,
             };
 
-            f(warmup, iterations, profiling, measure_source)
+            f(warmup, iterations, profiling, measure_source, save_to_file)
         }
     }
 }

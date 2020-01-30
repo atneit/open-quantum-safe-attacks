@@ -1,74 +1,114 @@
 use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
+use crate::utils::save_to_csv;
+use crate::utils::Rec;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
+use std::path::PathBuf;
 
-const THRESHOLD_WARN: u64 = 2000;
+const THRESHOLD_WARN_LOW: u64 = 1000;
+const THRESHOLD_WARN_HIGH: u64 = 10000;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Profile {
+    pub threshold: u64,
+    pub cutoff: u64,
+}
 
 #[logfn_inputs(Trace)]
 pub fn profile<FRODO: FrodoKem>(
-    warmup: usize,
-    iterations: usize,
+    warmup: u64,
+    iterations: u64,
     measure_source: MeasureSource,
     mut public_key: &mut FRODO::PublicKey,
     mut secret_key: &mut FRODO::SecretKey,
-) -> Result<u64, String> {
+    save_to_file: Option<PathBuf>,
+) -> Result<Profile, String> {
     info!(
         "Launching the profile routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
     let mut ciphertext = FRODO::Ciphertext::new();
 
-    info!("Encapsulating shared secret and generating ciphertext using normal encaps routine");
+    info!("WARMUP ==> Encapsulating shared secret and generating ciphertext using normal encaps routine");
     let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
     FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
-    info!("Running decryption oracle {} times for warmup.", warmup);
-    let warmuptime = mod_measure::<FRODO, _>(
-        0,
-        0,
-        warmup,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &mut Recorder::minval(),
-    )?;
-    debug!("Minimum latency during warmup {}", warmuptime);
+    info!(
+        "WARMUP ==> Running decryption oracle {} times for warmup.",
+        warmup
+    );
+    let mut recorders = vec![];
+    let cutoff = {
+        let rec = mod_measure::<FRODO, _>(
+            0,
+            0,
+            warmup,
+            &measure_source,
+            &mut ciphertext,
+            &mut shared_secret_d,
+            &mut secret_key,
+            Recorder::saveall("WARMUP", None),
+        )?;
+        let median = rec.aggregated_value()?;
+        let minimum_value = rec.min()?;
+        let cutoff = median + (median - minimum_value);
+        info!(
+            "PROFILING ==> using {} as the cutoff value to remove outliers (minimum warmup latency: {}, median: {}).",
+            cutoff, minimum_value, median
+        );
+        recorders.push(rec);
+        cutoff
+    };
 
     let last_index = FRODO::C::len() - 1;
     let lowmod = 1;
 
-    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, last_index, lowmod);
-    let threshold_high = mod_measure::<FRODO, _>(
-        lowmod,
-        last_index,
-        iterations,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, lowmod)),
-    )?;
+    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, last_index, lowmod);
+    let threshold_high = {
+        let rec = mod_measure::<FRODO, _>(
+            lowmod,
+            last_index,
+            iterations,
+            &measure_source,
+            &mut ciphertext,
+            &mut shared_secret_d,
+            &mut secret_key,
+            Recorder::saveall("LOWMOD", Some(cutoff)),
+        )?;
+        let t = rec.aggregated_value()?;
+        recorders.push(rec);
+        t
+    };
 
     let maxmod = error_correction_limit::<FRODO>() * 2;
 
-    info!("Profiling phase ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
-    let threshold_low = mod_measure::<FRODO, _>(
-        maxmod,
-        last_index,
-        iterations,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        &mut Recorder::medianval(format!("PROFILE[{}]{{{}}}", last_index, maxmod)),
-    )?;
+    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
+    let threshold_low = {
+        let rec = mod_measure::<FRODO, _>(
+            maxmod,
+            last_index,
+            iterations,
+            &measure_source,
+            &mut ciphertext,
+            &mut shared_secret_d,
+            &mut secret_key,
+            Recorder::saveall("HIGHMOD", Some(cutoff)),
+        )?;
+        let t = rec.aggregated_value()?;
+        recorders.push(rec);
+        t
+    };
+
+    if let Some(path) = save_to_file {
+        info!("Saving measurments to file {:?}", path);
+        save_to_csv(&path, &recorders)?;
+    }
 
     if threshold_high <= threshold_low {
         error!(
@@ -80,15 +120,18 @@ pub fn profile<FRODO: FrodoKem>(
 
     let diff = threshold_high - threshold_low;
 
-    if diff < THRESHOLD_WARN {
-        warn!("Diff ({}) < ", THRESHOLD_WARN);
+    if diff < THRESHOLD_WARN_LOW || diff > THRESHOLD_WARN_HIGH {
+        warn!(
+            "Diff ({}) is not between expected values {} and {}",
+            diff, THRESHOLD_WARN_LOW, THRESHOLD_WARN_HIGH
+        );
     }
 
     let threshold = threshold_low + (diff / 2);
     info!(
-        "Using ({}+{})/2={} as threshold value (diff: {}), everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
+        "PROFILING ==> Using ({}+{})/2={} as threshold value (diff: {}), everything below will be used to detect changes to B as well.", threshold_high, threshold_low,
         threshold, threshold_high - threshold_low
     );
 
-    Ok(threshold)
+    Ok(Profile { threshold, cutoff })
 }
