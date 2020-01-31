@@ -3,6 +3,7 @@ use log::warn;
 use oqs::frodokem::InternalMeasurments;
 use std::arch::x86_64::__rdtscp;
 use std::str::FromStr;
+use std::sync::atomic::{fence, Ordering};
 use structopt::StructOpt;
 
 mod baseline;
@@ -42,6 +43,16 @@ impl FromStr for MeasureSource {
 }
 
 impl MeasureSource {
+    pub fn clflush_inputs(toflush: Vec<&[u8]>) {
+        toflush.iter().for_each(|slice| {
+            // Step by 64 since we assume a 64 byte cache line size
+            slice.iter().step_by(64).for_each(|el| {
+                use core::arch::x86_64::_mm_clflush;
+                unsafe { _mm_clflush(el) };
+            })
+        });
+    }
+
     pub fn measure<F: FnMut() -> Result<InternalMeasurments, String>>(
         &self,
         mut to_measure: F,
@@ -50,9 +61,13 @@ impl MeasureSource {
             MeasureSource::External => {
                 let mut cpu_core_ident_start = 0u32;
                 let mut cpu_core_ident_stop = 0u32;
+                fence(Ordering::SeqCst);
                 let start = unsafe { __rdtscp(&mut cpu_core_ident_start) };
+                fence(Ordering::SeqCst);
                 let _ = to_measure()?;
+                fence(Ordering::SeqCst);
                 let stop = unsafe { __rdtscp(&mut cpu_core_ident_stop) };
+                fence(Ordering::SeqCst);
                 if cpu_core_ident_start == cpu_core_ident_stop {
                     Ok(Some(stop - start))
                 } else {
