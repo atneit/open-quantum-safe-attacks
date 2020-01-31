@@ -25,6 +25,7 @@ pub struct Profile {
 
 #[logfn_inputs(Trace)]
 pub fn profile<FRODO: FrodoKem>(
+    index: usize,
     warmup: u64,
     iterations: u64,
     measure_source: MeasureSource,
@@ -46,7 +47,7 @@ pub fn profile<FRODO: FrodoKem>(
     let cutoff = {
         let rec = mod_measure::<FRODO, _>(
             0,
-            0,
+            index,
             warmup,
             &measure_source,
             &mut ciphertext,
@@ -54,50 +55,49 @@ pub fn profile<FRODO: FrodoKem>(
             &mut secret_key,
             Recorder::saveall("WARMUP", None),
         )?;
-        let median = rec.aggregated_value()?;
+        let mean = rec.aggregated_value()?;
         let minimum_value = rec.min()?;
-        let cutoff = median + (median - minimum_value);
+        let cutoff = mean + (mean - minimum_value);
         info!(
-            "PROFILING ==> using {} as the cutoff value to remove outliers (minimum warmup latency: {}, median: {}).",
-            cutoff, minimum_value, median
+            "PROFILING ==> using {} as the cutoff value to remove outliers (minimum warmup latency: {}, mean: {}).",
+            cutoff, minimum_value, mean
         );
         recorders.push(rec);
         cutoff
     };
 
-    let last_index = FRODO::C::len() - 1;
     let lowmod = 1;
 
-    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, last_index, lowmod);
+    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish upper bound timing threshold.", iterations, index, lowmod);
     let threshold_high = {
         let rec = mod_measure::<FRODO, _>(
             lowmod,
-            last_index,
+            index,
             iterations,
             &measure_source,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            Recorder::saveall("LOWMOD", Some(cutoff)),
+            Recorder::saveall(format!("LOMOD[{}]", index), Some(cutoff)),
         )?;
         let t = rec.aggregated_value()?;
         recorders.push(rec);
         t
     };
 
-    let maxmod = error_correction_limit::<FRODO>() * 2;
+    let maxmod = error_correction_limit::<FRODO>() * 2 - 10;
 
-    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, last_index, maxmod);
+    info!("PROFILING ==> Running {} iterations ciphertextmod of C[{}] += {}, to establish lower bound timing threshold.", iterations, index, maxmod);
     let threshold_low = {
         let rec = mod_measure::<FRODO, _>(
             maxmod,
-            last_index,
+            index,
             iterations,
             &measure_source,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            Recorder::saveall("HIGHMOD", Some(cutoff)),
+            Recorder::saveall(format!("HIMOD[{}]", index), Some(cutoff)),
         )?;
         let t = rec.aggregated_value()?;
         recorders.push(rec);

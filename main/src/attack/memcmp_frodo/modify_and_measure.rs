@@ -74,6 +74,8 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
             recorder.record(time)?;
         };
     }
+    //Unmodify
+    modify::<FRODO>(ct, index_ij, Sign::Minus(amount))?;
 
     // We want to keep more than 75% of all values
     if recorder.len() < (iterations / 4) {
@@ -83,7 +85,5 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
             iterations
         );
     }
-    //Unmodify
-    modify::<FRODO>(ct, index_ij, Sign::Minus(amount))?;
     Ok(recorder)
 }

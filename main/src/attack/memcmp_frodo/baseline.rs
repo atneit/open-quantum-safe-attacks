@@ -46,7 +46,7 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         Recorder::minval(),
     )?
     .aggregated_value()?;
-    info!("Aggregated (median) time is {}", low);
+    info!("Aggregated (mean) time is {}", low);
 
     let mut recorders = vec![];
 
@@ -69,7 +69,7 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
             Recorder::saveall(format!("{}-NOMOD", t), None),
         )?;
         let low = rec_unmodified.aggregated_value()?;
-        info!("Aggregated (median) time is {}", low);
+        info!("Aggregated (mean) time is {}", low);
         rec_unmodified.log(Level::Debug);
 
         recorders.push(rec_unmodified);
@@ -92,8 +92,8 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
                 Recorder::saveall(format!("{}-MINOR[{}]", t, i), None),
             )?;
             let low = rec_modified_minor.min()?;
-            let median = rec_modified_minor.aggregated_value()?;
-            info!("Aggregated (median) time is {}, median: {}", low, median);
+            let mean = rec_modified_minor.aggregated_value()?;
+            info!("Aggregated (mean) time is {}, mean: {}", low, mean);
 
             info!(
                 "(MAJOR) Sampling {} decaps, modifying C[{}] by adding {}.",
@@ -110,8 +110,8 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
                 Recorder::saveall(format!("{}-MAJOR[{}]", t, i), None),
             )?;
             let low = rec_modified_minor.min()?;
-            let median = rec_modified_minor.aggregated_value()?;
-            info!("Aggregated (median) time is {}, median: {}", low, median);
+            let mean = rec_modified_minor.aggregated_value()?;
+            info!("Aggregated (mean) time is {}, mean: {}", low, mean);
 
             rec_modified_minor.log(Level::Debug);
             rec_modified_major.log(Level::Debug);

@@ -118,7 +118,10 @@ pub trait FrodoKem {
     ) -> std::result::Result<InternalMeasurments, String>;
     fn unpack(ct: &mut Self::Ciphertext) -> std::result::Result<(Self::Bp, Self::C), String>;
     fn pack(bp: Self::Bp, c: Self::C, into: &mut Self::Ciphertext) -> oqs::Result;
-    fn calculate_Eppp(ct: &mut Self::Ciphertext, sk: &mut Self::SecretKey) -> Result<Self::Eppp, String>;
+    fn calculate_Eppp(
+        ct: &mut Self::Ciphertext,
+        sk: &mut Self::SecretKey,
+    ) -> Result<Self::Eppp, String>;
 }
 
 macro_rules! impl_kembuf {

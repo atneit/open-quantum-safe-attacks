@@ -105,7 +105,7 @@ pub trait RecorderBackend: Debug {}
 #[derive(Debug)]
 pub struct SaveAllRecorder {
     store: BTreeMap<u64, u16>,
-    median: medianheap::MedianHeap<u64>,
+    sum: u128,
 }
 
 #[derive(Debug)]
@@ -179,7 +179,7 @@ impl SaveAllRecorder {
     pub fn new() -> SaveAllRecorder {
         SaveAllRecorder {
             store: BTreeMap::new(),
-            median: medianheap::MedianHeap::new(),
+            sum: 0,
         }
     }
 }
@@ -238,13 +238,13 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
                 self.counter += 1;
                 let valcnt = self.bknd.store.entry(value).or_insert(0);
                 *valcnt += 1;
-                self.bknd.median.push(value);
+                self.bknd.sum += value as u128;
             }
         } else {
             self.counter += 1;
             let valcnt = self.bknd.store.entry(value).or_insert(0);
             *valcnt += 1;
-            self.bknd.median.push(value);
+            self.bknd.sum += value as u128;
         }
         Ok(())
     }
@@ -284,9 +284,8 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
             ));
         }
 
-        self.bknd.median.median().ok_or(String::from(
-            "aggregated_value() called without any recorded values!",
-        ))
+        let mean = (self.bknd.sum / self.counter as u128) as u64;
+        Ok(mean)
     }
 }
 
