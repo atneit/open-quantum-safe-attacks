@@ -2,6 +2,7 @@ use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::profile::profile;
 use crate::attack::memcmp_frodo::profile::Profile;
 use crate::attack::memcmp_frodo::MeasureSource;
+use crate::utils::save_to_csv;
 use crate::utils::Rec;
 use crate::utils::Recorder;
 use liboqs_rs_bindings as oqs;
@@ -21,11 +22,13 @@ fn search_modification<FRODO: FrodoKem>(
     ciphertext: &mut FRODO::Ciphertext,
     shared_secret_d: &mut FRODO::SharedSecret,
     secret_key: &mut FRODO::SecretKey,
+    save_to_file: Option<&PathBuf>,
 ) -> Result<u16, String> {
     let maxmod = error_correction_limit::<FRODO>() * 2;
     let mut high = maxmod;
     let mut low = 0;
     let found = loop {
+        let profile = profile.clone();
         let currentmod: u16 = ((high as usize + low as usize) / 2)
             .try_into()
             .map_err(|_| "overflow")?;
@@ -38,7 +41,7 @@ fn search_modification<FRODO: FrodoKem>(
             index_ij,
             iterations
         );
-        let time = mod_measure::<FRODO, _>(
+        let rec = mod_measure::<FRODO, _>(
             currentmod,
             index_ij,
             iterations,
@@ -46,12 +49,12 @@ fn search_modification<FRODO: FrodoKem>(
             ciphertext,
             shared_secret_d,
             secret_key,
-            Recorder::medianval(
-                format!("MEDIAN[{}]{{{}}}", index_ij, currentmod),
+            Recorder::saveall(
+                format!("BINSEARCH[{}]{{{}}}", index_ij, currentmod),
                 Some(profile.cutoff),
             ),
-        )?
-        .aggregated_value()?;
+        )?;
+        let time = rec.aggregated_value()?;
 
         debug!("time measurment is {}", time);
         if time >= profile.threshold {
@@ -70,6 +73,12 @@ fn search_modification<FRODO: FrodoKem>(
                 currentmod
             );
             high = currentmod;
+        }
+        if let Some(path) = save_to_file {
+            let mut recorders = profile.recorders.borrow_mut();
+            recorders.push(rec);
+            debug!("Saving measurments to file {:?}", path);
+            save_to_csv(&path, &recorders)?;
         }
         if high - low == 1 {
             break low;
@@ -108,20 +117,11 @@ pub fn crack_s<FRODO: FrodoKem>(
     let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
 
-    let profile = profile::<FRODO>(
-        warmup,
-        profileiters,
-        measure_source,
-        &mut public_key,
-        &mut secret_key,
-        save_to_file,
-    )?;
-
     //let n = FRODO::params().PARAM_N;
     let nbar: usize = FRODO::params().PARAM_NBAR;
     let mbar = nbar;
     let err_corr_limit = error_correction_limit::<FRODO>();
-    let nbr_encaps = 10;
+    let nbr_encaps = 1;
     let i = mbar - 1;
 
     for t in 0..nbr_encaps {
@@ -129,6 +129,15 @@ pub fn crack_s<FRODO: FrodoKem>(
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
         let expectedEppp = FRODO::calculate_Eppp(&mut ciphertext, &mut secret_key)?;
         let expectedEppp = expectedEppp.as_slice();
+
+        let profile = profile::<FRODO>(
+            warmup,
+            profileiters,
+            measure_source,
+            &mut secret_key,
+            &mut ciphertext,
+            save_to_file.as_ref(),
+        )?;
 
         for j in 0..nbar {
             // Modify ciphertext at C[nbar-1, j]
@@ -139,10 +148,11 @@ pub fn crack_s<FRODO: FrodoKem>(
                 index,
                 iterations,
                 &measure_source,
-                profile,
+                profile.clone(),
                 &mut ciphertext,
                 &mut shared_secret_d,
                 &mut secret_key,
+                save_to_file.as_ref(),
             )?;
 
             let Eppp_ij = err_corr_limit - x0;

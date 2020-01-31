@@ -46,72 +46,79 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
         Recorder::minval(),
     )?
     .aggregated_value()?;
-    info!("Lowest time is {}", low);
+    info!("Aggregated (median) time is {}", low);
 
-    info!(
-        "(NOMOD) Sampling {} decaps without modifications, using \"{:?}\" as source of measurment.",
-        samples, measure_source
-    );
-    let rec_unmodified = mod_measure::<FRODO, _>(
-        0,
-        0,
-        samples,
-        &measure_source,
-        &mut ciphertext,
-        &mut shared_secret_d,
-        &mut secret_key,
-        Recorder::saveall("NOMOD", None),
-    )?;
-    let low = rec_unmodified.aggregated_value()?;
-    info!("Lowest time is {}", low);
-    rec_unmodified.log(Level::Debug);
+    let mut recorders = vec![];
 
-    let mut recorders = vec![rec_unmodified];
-
-    for i in &[57, 58, 59, 60, 61, 62, 63] {
-        // create a histogram with default config
+    for t in 0..10 {
+        info!("Encapsulating shared secret and generating ciphertext");
+        FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
         info!(
-            "(MINOR) Sampling {} decaps, modifying C[{}] by adding 1.",
-            samples, i
+            "(NOMOD) Sampling {} decaps without modifications, using \"{:?}\" as source of measurment.",
+            samples, measure_source
         );
-        let rec_modified_minor = mod_measure::<FRODO, _>(
-            1,
-            *i,
+        let rec_unmodified = mod_measure::<FRODO, _>(
+            0,
+            0,
             samples,
             &measure_source,
             &mut ciphertext,
             &mut shared_secret_d,
             &mut secret_key,
-            Recorder::saveall(format!("MINOR[{}]", i), None),
+            Recorder::saveall(format!("{}-NOMOD", t), None),
         )?;
-        let low = rec_modified_minor.min()?;
-        let median = rec_modified_minor.aggregated_value()?;
-        info!("Lowest time is {}, median: {}", low, median);
+        let low = rec_unmodified.aggregated_value()?;
+        info!("Aggregated (median) time is {}", low);
+        rec_unmodified.log(Level::Debug);
 
-        info!(
-            "(MAJOR) Sampling {} decaps, modifying C[{}] by adding {}.",
-            samples, i, maxmod
-        );
-        let rec_modified_major = mod_measure::<FRODO, _>(
-            maxmod,
-            *i,
-            samples,
-            &measure_source,
-            &mut ciphertext,
-            &mut shared_secret_d,
-            &mut secret_key,
-            Recorder::saveall(format!("MAJOR[{}]", i), None),
-        )?;
-        let low = rec_modified_minor.min()?;
-        let median = rec_modified_minor.aggregated_value()?;
-        info!("Lowest time is {}, median: {}", low, median);
+        recorders.push(rec_unmodified);
 
-        rec_modified_minor.log(Level::Debug);
-        rec_modified_major.log(Level::Debug);
+        for i in &[63] {
+            // create a histogram with default config
 
-        recorders.push(rec_modified_minor);
-        recorders.push(rec_modified_major);
+            info!(
+                "(MINOR) Sampling {} decaps, modifying C[{}] by adding 1.",
+                samples, i
+            );
+            let rec_modified_minor = mod_measure::<FRODO, _>(
+                1,
+                *i,
+                samples,
+                &measure_source,
+                &mut ciphertext,
+                &mut shared_secret_d,
+                &mut secret_key,
+                Recorder::saveall(format!("{}-MINOR[{}]", t, i), None),
+            )?;
+            let low = rec_modified_minor.min()?;
+            let median = rec_modified_minor.aggregated_value()?;
+            info!("Aggregated (median) time is {}, median: {}", low, median);
+
+            info!(
+                "(MAJOR) Sampling {} decaps, modifying C[{}] by adding {}.",
+                samples, i, maxmod
+            );
+            let rec_modified_major = mod_measure::<FRODO, _>(
+                maxmod,
+                *i,
+                samples,
+                &measure_source,
+                &mut ciphertext,
+                &mut shared_secret_d,
+                &mut secret_key,
+                Recorder::saveall(format!("{}-MAJOR[{}]", t, i), None),
+            )?;
+            let low = rec_modified_minor.min()?;
+            let median = rec_modified_minor.aggregated_value()?;
+            info!("Aggregated (median) time is {}, median: {}", low, median);
+
+            rec_modified_minor.log(Level::Debug);
+            rec_modified_major.log(Level::Debug);
+
+            recorders.push(rec_modified_minor);
+            recorders.push(rec_modified_major);
+        }
     }
 
     if let Some(path) = save {

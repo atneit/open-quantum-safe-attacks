@@ -31,16 +31,26 @@ impl Recorder<Histogram<u64>> {
     #[allow(dead_code)]
     pub fn histogram<S: ToString>(
         name: S,
-        hist: Histogram<u64>,
+        minimal_value: Option<u64>,
         cutoff: Option<u64>,
-    ) -> Recorder<Histogram<u64>> {
-        Recorder {
+    ) -> Result<Recorder<Histogram<u64>>, String> {
+        let bknd = if let Some(cutoff) = cutoff {
+            if let Some(minimal_value) = minimal_value {
+                Histogram::new_with_bounds(minimal_value, cutoff, 5)
+                    .map_err(|e| format!("{:?}", e))?
+            } else {
+                Histogram::new_with_max(cutoff, 5).map_err(|e| format!("{:?}", e))?
+            }
+        } else {
+            Histogram::new(5).map_err(|e| format!("{:?}", e))?
+        };
+        Ok(Recorder {
             name: name.to_string(),
-            bknd: hist,
+            bknd,
             counter: 0,
             min: u64::max_value(),
             cutoff,
-        }
+        })
     }
 }
 
@@ -57,6 +67,7 @@ impl Recorder<SaveAllRecorder> {
 }
 
 impl Recorder<medianheap::MedianHeap<u64>> {
+    #[allow(dead_code)]
     pub fn medianval<S: ToString>(
         name: S,
         cutoff: Option<u64>,
@@ -94,7 +105,7 @@ pub trait RecorderBackend: Debug {}
 #[derive(Debug)]
 pub struct SaveAllRecorder {
     store: BTreeMap<u64, u16>,
-    //median: medianheap::MedianHeap<u64>,
+    median: medianheap::MedianHeap<u64>,
 }
 
 #[derive(Debug)]
@@ -168,7 +179,7 @@ impl SaveAllRecorder {
     pub fn new() -> SaveAllRecorder {
         SaveAllRecorder {
             store: BTreeMap::new(),
-            //median: medianheap::MedianHeap::new(),
+            median: medianheap::MedianHeap::new(),
         }
     }
 }
@@ -219,7 +230,6 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
     type Iter = RecIterSaveAll<'a>;
 
     fn record(&mut self, value: u64) -> Result<(), String> {
-        // SaveAllRecorder ignores the cutoff value, that what it's for.
         if value < self.min {
             self.min = value;
         }
@@ -228,13 +238,13 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
                 self.counter += 1;
                 let valcnt = self.bknd.store.entry(value).or_insert(0);
                 *valcnt += 1;
-                //self.bknd.median.push(value);
+                self.bknd.median.push(value);
             }
         } else {
             self.counter += 1;
             let valcnt = self.bknd.store.entry(value).or_insert(0);
             *valcnt += 1;
-            //self.bknd.median.push(value);
+            self.bknd.median.push(value);
         }
         Ok(())
     }
@@ -268,16 +278,15 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
     }
 
     fn aggregated_value(&self) -> Result<u64, String> {
-        return self.min();
-        // if self.counter == 0 {
-        //     return Err(String::from(
-        //         "aggregated_value() called without any recorded values!",
-        //     ));
-        // }
+        if self.counter == 0 {
+            return Err(String::from(
+                "aggregated_value() called without any recorded values!",
+            ));
+        }
 
-        // self.bknd.median.median().ok_or(String::from(
-        //     "aggregated_value() called without any recorded values!",
-        // ))
+        self.bknd.median.median().ok_or(String::from(
+            "aggregated_value() called without any recorded values!",
+        ))
     }
 }
 

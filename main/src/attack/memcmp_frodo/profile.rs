@@ -3,20 +3,24 @@ use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::save_to_csv;
 use crate::utils::Rec;
 use crate::utils::Recorder;
+use crate::utils::SaveAllRecorder;
 use liboqs_rs_bindings as oqs;
 use log::{error, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 const THRESHOLD_WARN_LOW: u64 = 1000;
 const THRESHOLD_WARN_HIGH: u64 = 10000;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Profile {
     pub threshold: u64,
     pub cutoff: u64,
+    pub recorders: Rc<RefCell<Vec<Recorder<SaveAllRecorder>>>>,
 }
 
 #[logfn_inputs(Trace)]
@@ -24,20 +28,15 @@ pub fn profile<FRODO: FrodoKem>(
     warmup: u64,
     iterations: u64,
     measure_source: MeasureSource,
-    mut public_key: &mut FRODO::PublicKey,
     mut secret_key: &mut FRODO::SecretKey,
-    save_to_file: Option<PathBuf>,
+    mut ciphertext: &mut FRODO::Ciphertext,
+    save_to_file: Option<&PathBuf>,
 ) -> Result<Profile, String> {
     info!(
         "Launching the profile routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
-    let mut ciphertext = FRODO::Ciphertext::new();
-
-    info!("WARMUP ==> Encapsulating shared secret and generating ciphertext using normal encaps routine");
-    let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
-    FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 
     info!(
         "WARMUP ==> Running decryption oracle {} times for warmup.",
@@ -133,5 +132,9 @@ pub fn profile<FRODO: FrodoKem>(
         threshold, threshold_high - threshold_low
     );
 
-    Ok(Profile { threshold, cutoff })
+    Ok(Profile {
+        threshold,
+        cutoff,
+        recorders: Rc::new(RefCell::new(recorders)),
+    })
 }
