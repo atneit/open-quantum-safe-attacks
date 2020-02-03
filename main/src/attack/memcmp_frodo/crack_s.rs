@@ -9,7 +9,6 @@ use log::{debug, error, info, trace, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
-use std::convert::TryInto;
 use std::path::PathBuf;
 
 enum SearchError {
@@ -43,9 +42,41 @@ fn search_modification<FRODO: FrodoKem>(
     let mut highmodtime = None;
     let mut threshold = None;
     let mut iters = profileiters;
+    let mut moved_boundary_high = false;
+    let mut moved_boundary_low = false;
     let found = loop {
-        let currentmod: u16 = ((high + low) / 2).try_into().map_err(|_| "overflow")?;
+        // Select midpoint to test
+        let currentmod: u16 = match (moved_boundary_low, moved_boundary_high) {
+            (true, false) => {
+                // the higher boundary has not moved, the probability distribution tells us that
+                // the value we are searching for is closer to the low boundary.
+                let d = high - low;
+                let new = low + d / 8;
+                debug!(
+                    "Skewing the binsearch downwards, {} + ({} - {}) / 8 = {}",
+                    low, high, low, new
+                );
+                std::cmp::max(low + 1, new)
+            }
+            (false, true) => {
+                // the lower boundary has not moved, the probability distribution tells us that
+                // the value we are searching for is closer to the high boundary.
+                let d = high - low;
+                let new = high - d / 8;
+                debug!(
+                    "Skewing the binsearch uwards, {} - ({} - {}) / 8 = {}",
+                    high, high, low, new
+                );
+                std::cmp::min(high - 1, new)
+            }
+            _ => {
+                // Both boundaries have now moved, we continue with normal binary search.
+                (high + low) / 2
+            }
+        };
         trace!("high: {}, low: {}", high, low);
+
+        // Measure
         debug!(
             "C[{}/{}] => Testing adding {} to C[{}] with {} iterations.",
             index_ij,
@@ -67,18 +98,24 @@ fn search_modification<FRODO: FrodoKem>(
                 Some(cutoff),
             ),
         )?;
+
+        // Compute a single representative datapoint
         let time = rec.aggregated_value().map_err(|err| {
             error!("{}", err);
             SearchError::Retry
         })?;
+        debug!("time measurment is {}", time);
+
+        // Save measurments to file?
         if let Some(path) = save_to_file {
             recorders.push(rec);
             debug!("Saving measurments to file {:?}", path);
             save_to_csv(&path, &recorders)?;
         }
 
-        debug!("time measurment is {}", time);
+        // Threshold handling
         if let Some(threshold) = threshold {
+            // Compare results to threshold
             if time >= threshold {
                 debug!(
                     "C[{}/{}] => +Raising lowerbound to {}",
@@ -87,6 +124,7 @@ fn search_modification<FRODO: FrodoKem>(
                     currentmod
                 );
                 low = currentmod;
+                moved_boundary_low = true;
             } else {
                 debug!(
                     "C[{}/{}] => -Lowering upperbound to {}",
@@ -95,8 +133,10 @@ fn search_modification<FRODO: FrodoKem>(
                     currentmod
                 );
                 high = currentmod;
+                moved_boundary_high = true;
             }
         } else if let Some(threshold_low) = highmodtime {
+            // Threshold not yet calculated, do it!
             info!(
                 "C[{}/{}] => Mean of low amount of modifications: {}",
                 index_ij,
@@ -118,6 +158,7 @@ fn search_modification<FRODO: FrodoKem>(
             low = 0;
             iters = iterations;
         } else {
+            // Record current datapoint, we need it later (see above) to calculate the thresold
             info!(
                 "C[{}/{}] => Mean of high amount of modifications: {}",
                 index_ij,
