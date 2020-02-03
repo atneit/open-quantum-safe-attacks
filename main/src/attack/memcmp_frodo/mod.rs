@@ -47,11 +47,14 @@ impl MeasureSource {
         match self {
             MeasureSource::Oracle => {}
             _ => {
-                let last_core = core_affinity::get_core_ids()
-                    .ok_or("Failed to get CPU core ids.")?
-                    .pop()
-                    .ok_or("CPU id list is empty.")?;
-                info!("Setting CPU affinity to core: {:?}", last_core);
+                let mut last_cores =
+                    core_affinity::get_core_ids().ok_or("Failed to get CPU core ids.")?;
+                last_cores.sort_by_key(|id| id.id);
+                let last_core = last_cores.pop().ok_or("CPU id list is empty.")?;
+                info!(
+                    "Setting CPU affinity to core: {:?}, other candidates were: {:?}",
+                    last_core, last_cores
+                );
                 core_affinity::set_for_current(last_core);
             }
         }
