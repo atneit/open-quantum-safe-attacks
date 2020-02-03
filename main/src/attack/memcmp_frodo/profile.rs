@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use super::modify_and_measure::*;
 use crate::attack::memcmp_frodo::MeasureSource;
 use crate::utils::save_to_csv;

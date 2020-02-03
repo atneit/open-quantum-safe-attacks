@@ -1,6 +1,6 @@
 [package]
 name = "oqs-afw"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alexander Nilsson <a.code@nilsson.link>"]
 edition = "2018"
 
@@ -13,3 +13,4 @@ simple_logger = "1.4"
 hdrhistogram = "7.0"
 csv = "*"
 medianheap = "*"
+core_affinity = "*"

@@ -1,5 +1,5 @@
 use liboqs_rs_bindings as oqs;
-use log::warn;
+use log::{info, warn};
 use oqs::frodokem::InternalMeasurments;
 use std::arch::x86_64::__rdtscp;
 use std::str::FromStr;
@@ -43,6 +43,22 @@ impl FromStr for MeasureSource {
 }
 
 impl MeasureSource {
+    pub fn prep_thread(&self) -> Result<(), String> {
+        match self {
+            MeasureSource::Oracle => {}
+            _ => {
+                let last_core = core_affinity::get_core_ids()
+                    .ok_or("Failed to get CPU core ids.")?
+                    .pop()
+                    .ok_or("CPU id list is empty.")?;
+                info!("Setting CPU affinity to core: {:?}", last_core);
+                core_affinity::set_for_current(last_core);
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn clflush_inputs(toflush: Vec<&[u8]>) {
         toflush.iter().for_each(|slice| {
             // Step by 64 since we assume a 64 byte cache line size

@@ -1,2 +1,4 @@
 data/ filter=lfs diff=lfs merge=lfs -text
 data/1344aes-C0,7,15,23,31,39,47,55,63-1000000.csv filter=lfs diff=lfs merge=lfs -text
+bin-archive/ filter=lfs diff=lfs merge=lfs -text
+bin-archive/oqs-afw filter=lfs diff=lfs merge=lfs -text

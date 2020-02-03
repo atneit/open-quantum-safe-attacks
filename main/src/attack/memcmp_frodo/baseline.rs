@@ -16,6 +16,8 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
     measure_source: MeasureSource,
     save: Option<PathBuf>,
 ) -> Result {
+    measure_source.prep_thread()?;
+
     info!(
         "Launching the baseline routine against {} MEMCMP vulnerability.",
         FRODO::name()
