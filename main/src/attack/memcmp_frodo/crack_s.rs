@@ -13,12 +13,167 @@ use std::path::PathBuf;
 
 enum SearchError {
     Internal(String),
-    Retry,
+    RetryIndex,
+    RetryMod,
 }
 
 impl<S: ToString> From<S> for SearchError {
     fn from(s: S) -> SearchError {
         SearchError::Internal(s.to_string())
+    }
+}
+
+#[derive(Debug)]
+struct Threshold {
+    pub goodhighrange: std::ops::Range<u64>,
+    pub goodlowrange: std::ops::Range<u64>,
+    pub midpoint: u64,
+}
+
+#[derive(Debug)]
+enum ModCase {
+    TooLowMod,
+    TooHighMod,
+}
+
+impl Threshold {
+    fn distinguish(&self, time: u64) -> Result<ModCase, SearchError> {
+        match (
+            self.goodlowrange.contains(&time),
+            self.goodhighrange.contains(&time),
+        ) {
+            (false, false) => {
+                error!("time {} outside of expected ranges: {:?}", time, self);
+                Err(SearchError::RetryMod)
+            }
+            (true, false) => Ok(ModCase::TooHighMod),
+            (false, true) => Ok(ModCase::TooLowMod),
+            _ => Err(SearchError::Internal(
+                "time value inside both ranges at the same time, impossible!".to_string(),
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SearchState {
+    pub maxmod: u16,
+    pub index_ij: usize,
+    pub maxindex: usize,
+    pub highlim: u16,
+    pub lowlim: u16,
+    pub highmodtime: Option<u64>,
+    pub threshold: Option<Threshold>,
+    pub iterations_binsearch: u64,
+    pub iterations: u64,
+    pub iterations_profiling: u64,
+    pub low_moved: bool,
+    pub high_moved: bool,
+}
+
+impl SearchState {
+    fn calc_midpoint(&self) -> u16 {
+        match (self.low_moved, self.high_moved) {
+            (true, false) => {
+                // the higher boundary has not moved, the probability distribution tells us that
+                // the value we are searching for is closer to the low boundary.
+                let d = self.highlim - self.lowlim;
+                let new = self.lowlim + d / 8;
+                debug!(
+                    "Skewing the binsearch downwards, {} + ({} - {}) / 8 = {}",
+                    self.lowlim, self.highlim, self.lowlim, new
+                );
+                std::cmp::max(self.lowlim + 1, new)
+            }
+            (false, true) => {
+                // the self.lowerlim boundary has not moved, the probability distribution tells us that
+                // the value we are searching for is closer to the self.highlim boundary.
+                let d = self.highlim - self.lowlim;
+                let new = self.highlim - d / 8;
+                debug!(
+                    "Skewing the binsearch uwards, {} - ({} - {}) / 8 = {}",
+                    self.highlim, self.highlim, self.lowlim, new
+                );
+                std::cmp::min(self.highlim - 1, new)
+            }
+            _ => {
+                // Both boundaries have now moved, we continue with normal binary search.
+                (self.highlim + self.lowlim) / 2
+            }
+        }
+    }
+
+    fn update_state(&mut self, time: u64, currentmod: u16) -> Result<Option<u16>, SearchError> {
+        if let Some(threshold) = &self.threshold {
+            // Compare results to threshold
+            match threshold.distinguish(time)? {
+                ModCase::TooLowMod => {
+                    debug!(
+                        "C[{}/{}] => +Raising lowerbound to {}",
+                        self.index_ij, self.maxindex, currentmod
+                    );
+                    self.lowlim = currentmod;
+                    self.low_moved = true;
+                }
+                ModCase::TooHighMod => {
+                    debug!(
+                        "C[{}/{}] => -Lowering upperbound to {}",
+                        self.index_ij, self.maxindex, currentmod
+                    );
+                    self.highlim = currentmod;
+                    self.high_moved = true;
+                }
+            }
+        } else if let Some(threshold_low) = self.highmodtime {
+            // Threshold not yet calculated, do it!
+            info!(
+                "C[{}/{}] => Mean of low amount of modifications: {}",
+                self.index_ij, self.maxindex, time
+            );
+            if time <= threshold_low {
+                error!(
+                    "threshold high ({}) <= threshold low ({})",
+                    time, threshold_low
+                );
+                return Err(SearchError::RetryIndex);
+            }
+
+            let diff = time - threshold_low;
+            let halfdiff = diff / 2;
+            let threshold = Threshold {
+                midpoint: threshold_low + halfdiff,
+                goodlowrange: (threshold_low.saturating_sub(halfdiff))
+                    ..(threshold_low + (halfdiff / 2)),
+                goodhighrange: (time - (halfdiff / 2))..(time + halfdiff),
+            };
+            info!("New threshold is: {:?} (diff: {})", threshold, diff);
+            self.threshold.replace(threshold);
+            self.highlim = self.maxmod;
+            self.lowlim = 0;
+            self.iterations = self.iterations_binsearch;
+        } else {
+            // Record current datapoint, we need it later (see above) to calculate the thresold
+            info!(
+                "C[{}/{}] => Mean of high amount of modifications: {}",
+                self.index_ij, self.maxindex, time
+            );
+            self.highmodtime.replace(time);
+            self.highlim = 2; // This ensures we try 1 as the second trial
+            self.lowlim = 0; // This ensures we try 1 as the second trial
+        }
+        if self.highlim - self.lowlim == 1 {
+            if self.highlim == self.maxmod {
+                error!("Upper bound never changed, we might have missed the real threshold modification!");
+                return Err(SearchError::RetryIndex);
+            }
+            if self.lowlim == 0 {
+                error!("Lower bound never changed, we might have missed the real threshold modification!");
+                return Err(SearchError::RetryIndex);
+            }
+            return Ok(Some(self.lowlim));
+        }
+
+        Ok(None)
     }
 }
 
@@ -37,44 +192,25 @@ fn search_modification<FRODO: FrodoKem>(
     recorders: &mut Vec<Recorder<SaveAllRecorder>>,
 ) -> Result<u16, SearchError> {
     let maxmod = error_correction_limit::<FRODO>() * 2;
-    let mut high = maxmod + 2; // This ensures that we try maxmod-1 first
-    let mut low = maxmod - 3; // This ensures that we try maxmod-1 first
-    let mut highmodtime = None;
-    let mut threshold = None;
-    let mut iters = profileiters;
-    let mut moved_boundary_high = false;
-    let mut moved_boundary_low = false;
+    let mut state = SearchState {
+        maxmod,
+        index_ij,
+        maxindex: FRODO::C::len() - 1,
+        highlim: maxmod + 2, // This ensures that we try maxmod-1 first
+        lowlim: maxmod - 3,  // This ensures that we try maxmod-1 first
+        highmodtime: None,
+        threshold: None,
+        iterations: profileiters,
+        iterations_binsearch: iterations,
+        iterations_profiling: profileiters,
+        low_moved: false,
+        high_moved: false,
+    };
+    let mut retries = 0;
     let found = loop {
         // Select midpoint to test
-        let currentmod: u16 = match (moved_boundary_low, moved_boundary_high) {
-            (true, false) => {
-                // the higher boundary has not moved, the probability distribution tells us that
-                // the value we are searching for is closer to the low boundary.
-                let d = high - low;
-                let new = low + d / 8;
-                debug!(
-                    "Skewing the binsearch downwards, {} + ({} - {}) / 8 = {}",
-                    low, high, low, new
-                );
-                std::cmp::max(low + 1, new)
-            }
-            (false, true) => {
-                // the lower boundary has not moved, the probability distribution tells us that
-                // the value we are searching for is closer to the high boundary.
-                let d = high - low;
-                let new = high - d / 8;
-                debug!(
-                    "Skewing the binsearch uwards, {} - ({} - {}) / 8 = {}",
-                    high, high, low, new
-                );
-                std::cmp::min(high - 1, new)
-            }
-            _ => {
-                // Both boundaries have now moved, we continue with normal binary search.
-                (high + low) / 2
-            }
-        };
-        trace!("high: {}, low: {}", high, low);
+        let currentmod: u16 = state.calc_midpoint();
+        trace!("high: {}, low: {}", state.highlim, state.lowlim);
 
         // Measure
         debug!(
@@ -83,12 +219,12 @@ fn search_modification<FRODO: FrodoKem>(
             FRODO::C::len() - 1,
             currentmod,
             index_ij,
-            iters
+            state.iterations
         );
         let rec = mod_measure::<FRODO, _>(
             currentmod,
             index_ij,
-            iters,
+            state.iterations,
             &measure_source,
             ciphertext,
             shared_secret_d,
@@ -102,7 +238,7 @@ fn search_modification<FRODO: FrodoKem>(
         // Compute a single representative datapoint
         let time = rec.aggregated_value().map_err(|err| {
             error!("{}", err);
-            SearchError::Retry
+            SearchError::RetryIndex
         })?;
         debug!("time measurment is {}", time);
 
@@ -114,73 +250,25 @@ fn search_modification<FRODO: FrodoKem>(
         }
 
         // Threshold handling
-        if let Some(threshold) = threshold {
-            // Compare results to threshold
-            if time >= threshold {
-                debug!(
-                    "C[{}/{}] => +Raising lowerbound to {}",
-                    index_ij,
-                    FRODO::C::len() - 1,
-                    currentmod
-                );
-                low = currentmod;
-                moved_boundary_low = true;
-            } else {
-                debug!(
-                    "C[{}/{}] => -Lowering upperbound to {}",
-                    index_ij,
-                    FRODO::C::len() - 1,
-                    currentmod
-                );
-                high = currentmod;
-                moved_boundary_high = true;
-            }
-        } else if let Some(threshold_low) = highmodtime {
-            // Threshold not yet calculated, do it!
-            info!(
-                "C[{}/{}] => Mean of low amount of modifications: {}",
-                index_ij,
-                FRODO::C::len() - 1,
-                time
-            );
-            if time <= threshold_low {
-                error!(
-                    "threshold high ({}) <= threshold low ({})",
-                    time, threshold_low
-                );
-                return Err(SearchError::Retry);
-            }
 
-            let diff = time - threshold_low;
-            threshold.replace(threshold_low + (diff / 2));
-            info!("New threshold is: {:?} (diff: {})", threshold, diff);
-            high = maxmod;
-            low = 0;
-            iters = iterations;
-        } else {
-            // Record current datapoint, we need it later (see above) to calculate the thresold
-            info!(
-                "C[{}/{}] => Mean of high amount of modifications: {}",
-                index_ij,
-                FRODO::C::len() - 1,
-                time
-            );
-            highmodtime.replace(time);
-            high = 2; // This ensures we try 1 as the second trial
-            low = 0; // This ensures we try 1 as the second trial
-        }
-        if high - low == 1 {
-            break low;
+        match state.update_state(time, currentmod) {
+            Ok(Some(value)) => {
+                break value;
+            }
+            Ok(None) => {
+                retries = 0;
+            }
+            Err(SearchError::RetryMod) => {
+                warn!("Retrying the same modification again!");
+                retries += 1;
+                if retries >= 3 {
+                    // We got too many bad results, we need to search for a new profile
+                    return Err(SearchError::RetryIndex);
+                }
+            }
+            Err(err) => return Err(err),
         }
     };
-    if high == maxmod {
-        warn!("Upper bound never changed, we might have missed the real threshold modification!");
-        return Err(SearchError::Retry);
-    }
-    if low == 0 {
-        warn!("Lower bound never changed, we might have missed the real threshold modification!");
-        return Err(SearchError::Retry);
-    }
 
     Ok(found as u16)
 }
@@ -274,10 +362,11 @@ pub fn crack_s<FRODO: FrodoKem>(
                     &mut recorders,
                 ) {
                     Ok(x0) => break x0,
-                    Err(SearchError::Retry) => {
+                    Err(SearchError::Internal(err)) => return Err(err),
+                    Err(_) => {
+                        //RetryIndex and RetryMod
                         warn!("Retrying the search since we didn't get any results.");
                     }
-                    Err(SearchError::Internal(err)) => return Err(err),
                 }
             };
 

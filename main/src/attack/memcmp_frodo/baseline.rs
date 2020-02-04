@@ -52,7 +52,7 @@ pub fn baseline_memcmp_frodo<FRODO: FrodoKem>(
 
     let mut recorders = vec![];
 
-    for t in 0..10 {
+    for t in 0..1 {
         info!("Encapsulating shared secret and generating ciphertext");
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
 

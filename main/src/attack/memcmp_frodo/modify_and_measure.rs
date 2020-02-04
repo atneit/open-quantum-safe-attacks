@@ -67,7 +67,7 @@ pub fn mod_measure<'a, FRODO: FrodoKem, R: Rec<'a>>(
 ) -> Result<R, String> {
     //Modify
     modify::<FRODO>(ct, index_ij, Sign::Plus(amount))?;
-    'sample: for _ in 0..iterations {
+    for _ in 0..iterations {
         MeasureSource::clflush_inputs(vec![ct.as_slice(), ss.as_slice(), sk.as_slice()]);
         let m = measure_source.measure(|| FRODO::decaps_measure(ct, ss, sk))?;
         if let Some(time) = m {
