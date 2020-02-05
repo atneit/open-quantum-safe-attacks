@@ -221,6 +221,18 @@ fn search_modification<FRODO: FrodoKem>(
             index_ij,
             state.iterations
         );
+
+        let rec = if retries > 0 {
+            // If we are currently retrying we reuse the previous recorder so that we
+            // may aggregate the results and get a better mean value
+            recorders.pop().unwrap()
+        } else {
+            Recorder::saveall(
+                format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
+                Some(cutoff),
+            )
+        };
+
         let rec = mod_measure::<FRODO, _>(
             currentmod,
             index_ij,
@@ -229,10 +241,7 @@ fn search_modification<FRODO: FrodoKem>(
             ciphertext,
             shared_secret_d,
             secret_key,
-            Recorder::saveall(
-                format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
-                Some(cutoff),
-            ),
+            rec,
         )?;
 
         // Compute a single representative datapoint
@@ -259,12 +268,13 @@ fn search_modification<FRODO: FrodoKem>(
                 retries = 0;
             }
             Err(SearchError::RetryMod) => {
-                warn!("Retrying the same modification again!");
                 retries += 1;
-                if retries >= 3 {
-                    // We got too many bad results, we need to search for a new profile
+                if retries > 5 {
+                    // We got too many bad results, we need to search with a new profile instead
+                    error!("Too many retries for this modification!");
                     return Err(SearchError::RetryIndex);
                 }
+                warn!("Retrying the same modification again!");
             }
             Err(err) => return Err(err),
         }
@@ -338,9 +348,9 @@ pub fn crack_s<FRODO: FrodoKem>(
                     let minimum_value = rec.min()?;
                     let cutoff = mean + (mean - minimum_value);
                     info!(
-                    "PROFILING ==> using {} as the cutoff value to remove outliers (minimum warmup latency: {}, mean: {}).",
-                    cutoff, minimum_value, mean
-                );
+                        "using {} as the cutoff value to remove outliers (minimum warmup latency: {}, mean: {}).",
+                        cutoff, minimum_value, mean
+                    );
                     cutoff
                 };
 
