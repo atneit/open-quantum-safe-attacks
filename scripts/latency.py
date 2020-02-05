@@ -1,7 +1,24 @@
 import sys
 
+
+if len(sys.argv) < 4:
+    print("Usage: data.csv output.pgf title maximum-value COLUMN1 [COLUMN2 [COLUMN3 [...]]]")
+    sys.exit(1)
+    
+csvname = sys.argv[1]
+pgfoutputname = sys.argv[2]
+title = sys.argv[3]
+#samplesize = int(sys.argv[2])
+percentage = 1.0#0.75  #float(sys.argv[3]) / 100
+maxval = int(sys.argv[4])
+colspec = sys.argv[5:]
+writetofile = pgfoutputname != "-"
+
 import matplotlib
-matplotlib.use("pgf")
+
+if writetofile:
+    matplotlib.use("pgf")
+
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -18,20 +35,6 @@ import re
 
 sns.set()
 sns.set_context("paper")
-
-
-if len(sys.argv) < 4:
-    print("Usage: data.csv output.pgf title maximum-value COLUMN1 [COLUMN2 [COLUMN3 [...]]]")
-    sys.exit(1)
-    
-csvname = sys.argv[1]
-pgfoutputname = sys.argv[2]
-title = sys.argv[3]
-#samplesize = int(sys.argv[2])
-percentage = 1.0#0.75  #float(sys.argv[3]) / 100
-maxval = int(sys.argv[4])
-colspec = sys.argv[5:]
-
 
 data = pd.read_csv(csvname, sep=',', header=0)
 
@@ -77,9 +80,9 @@ for (i, col) in enumerate(columns):
     mean = d.mean()
     minimum = d.min()
     if prevmean:
-        print("{} mean: {}, min: {} (diff with previous: {} and {})".format(col, mean, minimum, prevmean - mean, prevmin - minimum))
+        print("len: {}, {} mean: {}, min: {} (diff with previous: {} and {})".format(len(d), col, mean, minimum, prevmean - mean, prevmin - minimum))
     else:
-        print("{} mean: {}, min: {}".format(col, mean, minimum))
+        print("len: {}, {} mean: {}, min: {}".format(len(d), col, mean, minimum))
     prevmean = mean
     prevmin = minimum
     axis = sns.rugplot([mean], height=height, ax=axis, color=colors[i])
@@ -93,5 +96,6 @@ plt.gcf().set_size_inches(w=5.1, h=1.5)
 plt.legend()
 plt.show()
 
-plt.savefig(pgfoutputname, bbox_inches = 'tight')
-print("Output printed to " + pgfoutputname)
+if writetofile:
+    plt.savefig(pgfoutputname, bbox_inches = 'tight')
+    print("Output printed to " + pgfoutputname)
