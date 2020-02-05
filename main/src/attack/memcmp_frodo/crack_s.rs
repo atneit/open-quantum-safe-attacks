@@ -108,7 +108,7 @@ impl SearchState {
             // Compare results to threshold
             match threshold.distinguish(time)? {
                 ModCase::TooLowMod => {
-                    debug!(
+                    info!(
                         "C[{}/{}] => +Raising lowerbound to {}",
                         self.index_ij, self.maxindex, currentmod
                     );
@@ -116,7 +116,7 @@ impl SearchState {
                     self.low_moved = true;
                 }
                 ModCase::TooHighMod => {
-                    debug!(
+                    info!(
                         "C[{}/{}] => -Lowering upperbound to {}",
                         self.index_ij, self.maxindex, currentmod
                     );
@@ -274,7 +274,7 @@ fn search_modification<FRODO: FrodoKem>(
                     error!("Too many retries for this modification!");
                     return Err(SearchError::RetryIndex);
                 }
-                warn!("Retrying the same modification again!");
+                warn!("Adding more measurments of the same modification!");
             }
             Err(err) => return Err(err),
         }
