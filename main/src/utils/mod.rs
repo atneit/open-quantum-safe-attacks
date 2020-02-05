@@ -98,6 +98,8 @@ pub trait Rec<'a>: Debug {
     fn len(&self) -> u64;
     fn min(&self) -> Result<u64, String>;
     fn aggregated_value(&self) -> Result<u64, String>;
+    fn percentage_below(&self, below: u64) -> f64;
+    fn nth_lowest_value(&self, nth: u64) -> Option<u64>;
 }
 
 pub trait RecorderBackend: Debug {}
@@ -173,6 +175,16 @@ impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
     fn aggregated_value(&self) -> Result<u64, String> {
         Ok(self.bknd.mean() as u64)
     }
+
+    fn percentage_below(&self, _below: u64) -> f64 {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
+    }
+
+    fn nth_lowest_value(&self, _nth: u64) -> Option<u64> {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
+    }
 }
 
 impl SaveAllRecorder {
@@ -223,6 +235,18 @@ impl<'a> Rec<'a> for Recorder<MinVal> {
                 "aggregated_value() called without any recorded values!",
             ))
         }
+    }
+
+    fn percentage_below(&self, below: u64) -> f64 {
+        if self.counter > 0 && self.min < below {
+            return 100.0;
+        }
+        0.0
+    }
+
+    fn nth_lowest_value(&self, _nth: u64) -> Option<u64> {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
     }
 }
 
@@ -287,6 +311,15 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
         let mean = (self.bknd.sum / self.counter as u128) as u64;
         Ok(mean)
     }
+
+    fn percentage_below(&self, below: u64) -> f64 {
+        let count = self.iter().take_while(|v| v < &below).count() as f64;
+        count / self.counter as f64 * 100.0
+    }
+
+    fn nth_lowest_value(&self, nth: u64) -> Option<u64> {
+        self.iter().skip((nth - 1) as usize).next()
+    }
 }
 
 impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
@@ -340,6 +373,16 @@ impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
         self.bknd.median().ok_or(String::from(
             "aggregated_value called without any recorded values!",
         ))
+    }
+
+    fn percentage_below(&self, _below: u64) -> f64 {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
+    }
+
+    fn nth_lowest_value(&self, _nth: u64) -> Option<u64> {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
     }
 }
 

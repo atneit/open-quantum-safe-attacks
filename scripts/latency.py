@@ -75,7 +75,7 @@ prevmin = None
 for (i, col) in enumerate(columns):
     height -= heightstep
     d = usecol(col)
-    axis = sns.distplot(d, label=getlabel(col), kde=True, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
+    axis = sns.distplot(d, label=getlabel(col), kde=False, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
     #axis = sns.kdeplot(d, label=getlabel(col), cut=0, ax=axis, color=colors[i])
     mean = d.mean()
     minimum = d.min()

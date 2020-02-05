@@ -25,9 +25,9 @@ impl<S: ToString> From<S> for SearchError {
 
 #[derive(Debug)]
 struct Threshold {
-    pub goodhighrange: std::ops::Range<u64>,
-    pub goodlowrange: std::ops::Range<u64>,
-    pub midpoint: u64,
+    pub goodhighrange: std::ops::RangeFrom<f64>,
+    pub goodlowrange: std::ops::RangeTo<f64>,
+    pub midpoint: f64,
 }
 
 #[derive(Debug)]
@@ -37,19 +37,23 @@ enum ModCase {
 }
 
 impl Threshold {
-    fn distinguish(&self, time: u64) -> Result<ModCase, SearchError> {
+    fn distinguish(&self, percentage: f64) -> Result<ModCase, SearchError> {
         match (
-            self.goodlowrange.contains(&time),
-            self.goodhighrange.contains(&time),
+            self.goodlowrange.contains(&percentage),
+            self.goodhighrange.contains(&percentage),
         ) {
             (false, false) => {
-                error!("time {} outside of expected ranges: {:?}", time, self);
+                error!(
+                    "percentage {} outside of expected ranges: {:?}",
+                    percentage, self
+                );
                 Err(SearchError::RetryMod)
             }
-            (true, false) => Ok(ModCase::TooHighMod),
-            (false, true) => Ok(ModCase::TooLowMod),
+            (true, false) => Ok(ModCase::TooLowMod),
+            (false, true) => Ok(ModCase::TooHighMod),
             _ => Err(SearchError::Internal(
-                "time value inside both ranges at the same time, impossible!".to_string(),
+                "percentage value inside both ranges at the same percentage, impossible!"
+                    .to_string(),
             )),
         }
     }
@@ -62,13 +66,14 @@ struct SearchState {
     pub maxindex: usize,
     pub highlim: u16,
     pub lowlim: u16,
-    pub highmodtime: Option<u64>,
+    pub lowmodpercentage: Option<f64>,
     pub threshold: Option<Threshold>,
     pub iterations_binsearch: u64,
     pub iterations: u64,
     pub iterations_profiling: u64,
     pub low_moved: bool,
     pub high_moved: bool,
+    pub valuelimit: u64,
 }
 
 impl SearchState {
@@ -103,10 +108,14 @@ impl SearchState {
         }
     }
 
-    fn update_state(&mut self, time: u64, currentmod: u16) -> Result<Option<u16>, SearchError> {
+    fn update_state(
+        &mut self,
+        percentage: f64,
+        currentmod: u16,
+    ) -> Result<Option<u16>, SearchError> {
         if let Some(threshold) = &self.threshold {
             // Compare results to threshold
-            match threshold.distinguish(time)? {
+            match threshold.distinguish(percentage)? {
                 ModCase::TooLowMod => {
                     info!(
                         "C[{}/{}] => +Raising lowerbound to {}",
@@ -124,27 +133,26 @@ impl SearchState {
                     self.high_moved = true;
                 }
             }
-        } else if let Some(threshold_low) = self.highmodtime {
+        } else if let Some(threshold_lowpercentage) = self.lowmodpercentage {
             // Threshold not yet calculated, do it!
             info!(
-                "C[{}/{}] => Mean of low amount of modifications: {}",
-                self.index_ij, self.maxindex, time
+                "C[{}/{}] => Count of low amount of modifications: {}",
+                self.index_ij, self.maxindex, percentage
             );
-            if time <= threshold_low {
+            if percentage <= threshold_lowpercentage {
                 error!(
                     "threshold high ({}) <= threshold low ({})",
-                    time, threshold_low
+                    percentage, threshold_lowpercentage
                 );
                 return Err(SearchError::RetryIndex);
             }
 
-            let diff = time - threshold_low;
-            let halfdiff = diff / 2;
+            let diff = percentage - threshold_lowpercentage;
+            let halfdiff = diff / 2.0;
             let threshold = Threshold {
-                midpoint: threshold_low + halfdiff,
-                goodlowrange: (threshold_low.saturating_sub(halfdiff))
-                    ..(threshold_low + (halfdiff / 2)),
-                goodhighrange: (time - (halfdiff / 2))..(time + halfdiff),
+                midpoint: threshold_lowpercentage + halfdiff,
+                goodlowrange: ..(threshold_lowpercentage + (halfdiff / 2.0)),
+                goodhighrange: (percentage - (halfdiff / 2.0))..,
             };
             info!("New threshold is: {:?} (diff: {})", threshold, diff);
             self.threshold.replace(threshold);
@@ -154,12 +162,12 @@ impl SearchState {
         } else {
             // Record current datapoint, we need it later (see above) to calculate the thresold
             info!(
-                "C[{}/{}] => Mean of high amount of modifications: {}",
-                self.index_ij, self.maxindex, time
+                "C[{}/{}] => Count of high amount of modifications: {}",
+                self.index_ij, self.maxindex, percentage
             );
-            self.highmodtime.replace(time);
-            self.highlim = 2; // This ensures we try 1 as the second trial
-            self.lowlim = 0; // This ensures we try 1 as the second trial
+            self.lowmodpercentage.replace(percentage);
+            self.highlim = self.maxmod + 2; // This ensures that we try maxmod-1 as the second profiling step
+            self.lowlim = self.maxmod - 3; // This ensures that we try maxmod-1 as the second profiling step
         }
         if self.highlim - self.lowlim == 1 {
             if self.highlim == self.maxmod {
@@ -174,6 +182,16 @@ impl SearchState {
         }
 
         Ok(None)
+    }
+
+    fn get_percentage(&mut self, recorder: &Recorder<SaveAllRecorder>) -> Result<f64, SearchError> {
+        if self.threshold.is_none() && self.lowmodpercentage.is_none() {
+            // We are in the first part of the profiling phase
+            self.valuelimit = recorder
+                .nth_lowest_value(recorder.len() / 100)
+                .ok_or(SearchError::RetryIndex)?; //Not enugh recorded values
+        }
+        Ok(recorder.percentage_below(self.valuelimit))
     }
 }
 
@@ -196,15 +214,16 @@ fn search_modification<FRODO: FrodoKem>(
         maxmod,
         index_ij,
         maxindex: FRODO::C::len() - 1,
-        highlim: maxmod + 2, // This ensures that we try maxmod-1 first
-        lowlim: maxmod - 3,  // This ensures that we try maxmod-1 first
-        highmodtime: None,
+        highlim: 2, // This ensures that we try 1 first
+        lowlim: 0,  // This ensures that we try 1 first
+        lowmodpercentage: None,
         threshold: None,
         iterations: profileiters,
         iterations_binsearch: iterations,
         iterations_profiling: profileiters,
         low_moved: false,
         high_moved: false,
+        valuelimit: 0,
     };
     let mut retries = 0;
     let found = loop {
@@ -245,11 +264,8 @@ fn search_modification<FRODO: FrodoKem>(
         )?;
 
         // Compute a single representative datapoint
-        let time = rec.aggregated_value().map_err(|err| {
-            error!("{}", err);
-            SearchError::RetryIndex
-        })?;
-        debug!("time measurment is {}", time);
+        let percentage = state.get_percentage(&rec)?;
+        debug!("percentage measurment is {}", percentage);
 
         // Save measurments to file?
         if let Some(path) = save_to_file {
@@ -260,7 +276,7 @@ fn search_modification<FRODO: FrodoKem>(
 
         // Threshold handling
 
-        match state.update_state(time, currentmod) {
+        match state.update_state(percentage, currentmod) {
             Ok(Some(value)) => {
                 break value;
             }
@@ -269,7 +285,7 @@ fn search_modification<FRODO: FrodoKem>(
             }
             Err(SearchError::RetryMod) => {
                 retries += 1;
-                if retries > 5 {
+                if retries > 10 {
                     // We got too many bad results, we need to search with a new profile instead
                     error!("Too many retries for this modification!");
                     return Err(SearchError::RetryIndex);
