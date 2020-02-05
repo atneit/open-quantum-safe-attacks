@@ -11,6 +11,8 @@ use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
 use std::path::PathBuf;
 
+const HIGH_PERCENTAGE_LIMIT: f64 = 2.5;
+
 enum SearchError {
     Internal(String),
     RetryIndex,
@@ -136,13 +138,19 @@ impl SearchState {
         } else if let Some(threshold_lowpercentage) = self.lowmodpercentage {
             // Threshold not yet calculated, do it!
             info!(
-                "C[{}/{}] => Count of low amount of modifications: {}",
+                "C[{}/{}] => Percentage of values below limit for low amount of modifications: {}",
                 self.index_ij, self.maxindex, percentage
             );
             if percentage <= threshold_lowpercentage {
                 error!(
                     "threshold high ({}) <= threshold low ({})",
                     percentage, threshold_lowpercentage
+                );
+                return Err(SearchError::RetryIndex);
+            } else if percentage > HIGH_PERCENTAGE_LIMIT {
+                error!(
+                    "threshold high ({}) > {}",
+                    percentage, HIGH_PERCENTAGE_LIMIT
                 );
                 return Err(SearchError::RetryIndex);
             }
@@ -162,7 +170,7 @@ impl SearchState {
         } else {
             // Record current datapoint, we need it later (see above) to calculate the thresold
             info!(
-                "C[{}/{}] => Count of high amount of modifications: {}",
+                "C[{}/{}] => Percentage of values below limit for high amount of modifications: {}",
                 self.index_ij, self.maxindex, percentage
             );
             self.lowmodpercentage.replace(percentage);
@@ -190,6 +198,7 @@ impl SearchState {
             self.valuelimit = recorder
                 .nth_lowest_value(recorder.len() / 100)
                 .ok_or(SearchError::RetryIndex)?; //Not enugh recorded values
+            info!("using {} as the valuelimit below which we calculate the percentage of the number of measurments.", self.valuelimit);
         }
         Ok(recorder.percentage_below(self.valuelimit))
     }
@@ -327,7 +336,7 @@ pub fn crack_s<FRODO: FrodoKem>(
     let nbar: usize = FRODO::params().PARAM_NBAR;
     let mbar = nbar;
     let err_corr_limit = error_correction_limit::<FRODO>();
-    let nbr_encaps = 1;
+    let nbr_encaps = 100;
     let i = mbar - 1;
 
     let mut recorders = vec![];
