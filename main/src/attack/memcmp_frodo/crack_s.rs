@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
 const CONSECUTIVE_LIMIT_CHANGE: u8 = 3;
+const MAX_MOD_RETRIES: u8 = 6;
 
 enum SearchError {
     Internal(String),
@@ -123,7 +124,7 @@ impl SearchState {
                     self.consecutive_high_changes = 0;
                     midpoint
                 } else if self.consecutive_high_changes >= CONSECUTIVE_LIMIT_CHANGE {
-                    warn!("Lowerbond ({}) has not changed for a while, it might be erronous, let's check it again", self.lowlim);
+                    warn!("Lowerbound ({}) has not changed for a while, it might be erronous, let's check it again", self.lowlim);
                     let midpoint = self.lowlim;
                     if self.prev_lowlim == self.lowlim {
                         self.lowlim = self.prev_lowlim;
@@ -329,18 +330,28 @@ fn search_modification<FRODO: FrodoKem>(
             }
             Err(SearchError::RetryMod) => {
                 retries += 1;
-                if retries > 5 {
+                if retries >= MAX_MOD_RETRIES {
                     // We got too many bad results, we need to search with a new profile instead
                     error!("Too many retries for this modification!");
                     return Err(SearchError::RetryIndex);
+                } else if retries == MAX_MOD_RETRIES / 2 {
+                    // If we have tried half the amount of maximum retries
+                    // we discard the previous (uncertain) results and try
+                    // again with a new batch
+                    warn!("Discarding data for this modification, trying again!");
+                    recorders.push(Recorder::saveall(
+                        format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
+                        Some(cutoff),
+                    ))
+                } else {
+                    warn!("Adding more measurments of the same modification!");
                 }
-                warn!("Adding more measurments of the same modification!");
             }
             Err(err) => return Err(err),
         }
     };
 
-    Ok(found as u16)
+    Ok(found)
 }
 
 //#[logfn_inputs(Trace)]
