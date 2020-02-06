@@ -5,7 +5,7 @@ use crate::utils::Rec;
 use crate::utils::Recorder;
 use crate::utils::SaveAllRecorder;
 use liboqs_rs_bindings as oqs;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, log, trace, warn, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
@@ -238,6 +238,7 @@ impl SearchState {
 
 #[logfn_inputs(Trace)]
 fn search_modification<FRODO: FrodoKem>(
+    ciphertext_index: usize,
     index_ij: usize,
     iterations: u64,
     profileiters: u64,
@@ -292,7 +293,10 @@ fn search_modification<FRODO: FrodoKem>(
             recorders.pop().unwrap()
         } else {
             Recorder::saveall(
-                format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
+                format!(
+                    "{}-BINSEARCH[{}]({}){{{}}}",
+                    ciphertext_index, index_ij, expected_x0, currentmod
+                ),
                 Some(cutoff),
             )
         };
@@ -340,7 +344,10 @@ fn search_modification<FRODO: FrodoKem>(
                     // again with a new batch
                     warn!("Discarding data for this modification, trying again!");
                     recorders.push(Recorder::saveall(
-                        format!("BINSEARCH[{}]({}){{{}}}", index_ij, expected_x0, currentmod),
+                        format!(
+                            "{}-BINSEARCH[{}]({}){{{}}}",
+                            ciphertext_index, index_ij, expected_x0, currentmod
+                        ),
                         Some(cutoff),
                     ))
                 } else {
@@ -389,6 +396,9 @@ pub fn crack_s<FRODO: FrodoKem>(
 
     measure_source.prep_thread()?;
 
+    let mut indexes = 0.0;
+    let mut succeses = 0.0;
+
     for t in 0..nbr_encaps {
         info!("Using encaps to generate ciphertext number: {}", t);
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
@@ -413,7 +423,7 @@ pub fn crack_s<FRODO: FrodoKem>(
                         &mut ciphertext,
                         &mut shared_secret_d,
                         &mut secret_key,
-                        Recorder::saveall("WARMUP", None),
+                        Recorder::saveall(format!("{}-WARMUP[{}]", t, index), None),
                     )?;
                     let mean = rec.aggregated_value()?;
                     let minimum_value = rec.min()?;
@@ -430,6 +440,7 @@ pub fn crack_s<FRODO: FrodoKem>(
                     i, j, expected_x0
                 );
                 match search_modification::<FRODO>(
+                    t,
                     index,
                     iterations,
                     profileiters,
@@ -451,18 +462,25 @@ pub fn crack_s<FRODO: FrodoKem>(
                 }
             };
 
-            let Eppp_ij = err_corr_limit - x0;
-            if Eppp_ij - 1 != expectedEppp[index] {
-                warn!(
-                    "Found -Eppp[{},{}]={} expected: {}",
-                    i, j, Eppp_ij, expectedEppp[index]
-                )
+            indexes += 1.0;
+            let Eppp_ij = err_corr_limit - x0 - 1; //TODO, find out why we need a -1 here
+            let lglvl = if Eppp_ij != expectedEppp[index] {
+                Level::Warn
             } else {
-                info!(
-                    "Found -Eppp[{},{}]={} expected: {}",
-                    i, j, Eppp_ij, expectedEppp[index]
-                );
-            }
+                succeses += 1.0;
+                Level::Info
+            };
+            log!(
+                lglvl,
+                "Found -Eppp[{},{}]={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
+                i,
+                j,
+                Eppp_ij,
+                expectedEppp[index],
+                succeses,
+                indexes,
+                (succeses / indexes) * 100.0
+            );
         }
     }
 
