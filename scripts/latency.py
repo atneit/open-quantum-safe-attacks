@@ -40,14 +40,20 @@ data = pd.read_csv(csvname, sep=',', header=0)
 
 columns = []
 for spec in colspec:
-    for col in data.columns:
-        if col not in columns and re.search(spec, col):
-            columns.append(col)
+    if spec.startswith('#'):
+        index = int(spec[1:])
+        if index not in columns:
+            columns.append(data.columns[index])
+    else:
+        for col in data.columns:
+            if col not in columns and re.search(spec, col):
+                columns.append(col)
+
+print("Selected columns: " + repr(columns))
 
 if not columns:
     sys.exit(0)
             
-print("Selected columns: " + repr(columns))
 
 def usecol(col):
     d = data[col]
@@ -75,14 +81,17 @@ prevmin = None
 for (i, col) in enumerate(columns):
     height -= heightstep
     d = usecol(col)
-    axis = sns.distplot(d, label=getlabel(col), kde=False, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
+    axis = sns.distplot(d, label=getlabel(col), kde=True, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
     #axis = sns.kdeplot(d, label=getlabel(col), cut=0, ax=axis, color=colors[i])
     mean = d.mean()
     minimum = d.min()
+    origlen = len(data[col]) - data[col].isnull().sum()
+    percentage = len(d) / origlen * 100
+    index = data.columns.get_loc(col)
     if prevmean:
-        print("len: {}, {} mean: {}, min: {} (diff with previous: {} and {})".format(len(d), col, mean, minimum, prevmean - mean, prevmin - minimum))
+        print("len: {}({})={}%, [{}] {} mean: {}, min: {} (diff with previous: {} and {})".format(len(d), origlen, percentage, index,col, mean, minimum, prevmean - mean, prevmin - minimum))
     else:
-        print("len: {}, {} mean: {}, min: {}".format(len(d), col, mean, minimum))
+        print("len: {}({})={}%, [{}] {} mean: {}, min: {}".format(len(d), origlen, percentage, index, col, mean, minimum))
     prevmean = mean
     prevmin = minimum
     axis = sns.rugplot([mean], height=height, ax=axis, color=colors[i])
