@@ -11,7 +11,7 @@ use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
 use std::path::PathBuf;
 
-const HIGH_PERCENTAGE_LIMIT: f64 = 2.5;
+const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
 
 enum SearchError {
     Internal(String),
@@ -141,16 +141,10 @@ impl SearchState {
                 "C[{}/{}] => Percentage of values below limit for low amount of modifications: {}",
                 self.index_ij, self.maxindex, percentage
             );
-            if percentage <= threshold_lowpercentage {
+            if percentage <= LOW_PERCENTAGE_LIMIT {
                 error!(
-                    "threshold high ({}) <= threshold low ({})",
-                    percentage, threshold_lowpercentage
-                );
-                return Err(SearchError::RetryIndex);
-            } else if percentage > HIGH_PERCENTAGE_LIMIT {
-                error!(
-                    "threshold high ({}) > {}",
-                    percentage, HIGH_PERCENTAGE_LIMIT
+                    "threshold high ({}) <=  LOW_PERCENTAGE_LIMIT ({})",
+                    percentage, LOW_PERCENTAGE_LIMIT
                 );
                 return Err(SearchError::RetryIndex);
             }
@@ -294,7 +288,7 @@ fn search_modification<FRODO: FrodoKem>(
             }
             Err(SearchError::RetryMod) => {
                 retries += 1;
-                if retries > 10 {
+                if retries > 5 {
                     // We got too many bad results, we need to search with a new profile instead
                     error!("Too many retries for this modification!");
                     return Err(SearchError::RetryIndex);
