@@ -12,6 +12,7 @@ use oqs::frodokem::KemBuf;
 use std::path::PathBuf;
 
 const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
+const CONSECUTIVE_LIMIT_CHANGE: u8 = 3;
 
 enum SearchError {
     Internal(String),
@@ -68,6 +69,10 @@ struct SearchState {
     pub maxindex: usize,
     pub highlim: u16,
     pub lowlim: u16,
+    pub consecutive_high_changes: u8,
+    pub consecutive_low_changes: u8,
+    pub prev_highlim: u16,
+    pub prev_lowlim: u16,
     pub lowmodpercentage: Option<f64>,
     pub threshold: Option<Threshold>,
     pub iterations_binsearch: u64,
@@ -79,7 +84,7 @@ struct SearchState {
 }
 
 impl SearchState {
-    fn calc_midpoint(&self) -> u16 {
+    fn calc_midpoint(&mut self) -> u16 {
         match (self.low_moved, self.high_moved) {
             (true, false) => {
                 // the higher boundary has not moved, the probability distribution tells us that
@@ -105,7 +110,33 @@ impl SearchState {
             }
             _ => {
                 // Both boundaries have now moved, we continue with normal binary search.
-                (self.highlim + self.lowlim) / 2
+                if self.consecutive_low_changes >= CONSECUTIVE_LIMIT_CHANGE {
+                    warn!("Upperbound ({}) has not changed for a while, it might be erronous, let's check it again", self.highlim);
+                    let midpoint = self.highlim;
+                    if self.prev_highlim == self.highlim {
+                        self.highlim = self.prev_highlim;
+                        self.prev_highlim = self.maxmod;
+                    } else {
+                        self.highlim = self.prev_highlim;
+                    }
+                    self.consecutive_low_changes = 0;
+                    self.consecutive_high_changes = 0;
+                    midpoint
+                } else if self.consecutive_high_changes >= CONSECUTIVE_LIMIT_CHANGE {
+                    warn!("Lowerbond ({}) has not changed for a while, it might be erronous, let's check it again", self.lowlim);
+                    let midpoint = self.lowlim;
+                    if self.prev_lowlim == self.lowlim {
+                        self.lowlim = self.prev_lowlim;
+                        self.prev_lowlim = 0;
+                    } else {
+                        self.lowlim = self.prev_lowlim;
+                    }
+                    self.consecutive_low_changes = 0;
+                    self.consecutive_high_changes = 0;
+                    midpoint
+                } else {
+                    (self.highlim + self.lowlim) / 2
+                }
             }
         }
     }
@@ -119,18 +150,24 @@ impl SearchState {
             // Compare results to threshold
             match threshold.distinguish(percentage)? {
                 ModCase::TooLowMod => {
+                    self.consecutive_low_changes += 1;
+                    self.consecutive_high_changes = 0;
                     info!(
                         "C[{}/{}] => +Raising lowerbound to {}",
                         self.index_ij, self.maxindex, currentmod
                     );
+                    self.prev_lowlim = self.lowlim;
                     self.lowlim = currentmod;
                     self.low_moved = true;
                 }
                 ModCase::TooHighMod => {
+                    self.consecutive_low_changes = 0;
+                    self.consecutive_high_changes += 1;
                     info!(
                         "C[{}/{}] => -Lowering upperbound to {}",
                         self.index_ij, self.maxindex, currentmod
                     );
+                    self.prev_highlim = self.highlim;
                     self.highlim = currentmod;
                     self.high_moved = true;
                 }
@@ -194,7 +231,7 @@ impl SearchState {
                 .ok_or(SearchError::RetryIndex)?; //Not enugh recorded values
             info!("using {} as the valuelimit below which we calculate the percentage of the number of measurments.", self.valuelimit);
         }
-        Ok(recorder.percentage_below(self.valuelimit))
+        Ok(recorder.percentage_lte(self.valuelimit))
     }
 }
 
@@ -219,6 +256,10 @@ fn search_modification<FRODO: FrodoKem>(
         maxindex: FRODO::C::len() - 1,
         highlim: 2, // This ensures that we try 1 first
         lowlim: 0,  // This ensures that we try 1 first
+        prev_highlim: maxmod,
+        prev_lowlim: 1,
+        consecutive_high_changes: 0,
+        consecutive_low_changes: 0,
         lowmodpercentage: None,
         threshold: None,
         iterations: profileiters,
