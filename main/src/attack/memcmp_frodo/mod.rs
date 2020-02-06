@@ -1,9 +1,8 @@
 use liboqs_rs_bindings as oqs;
 use log::{info, warn};
-use oqs::frodokem::InternalMeasurments;
-use std::arch::x86_64::__rdtscp;
+use oqs::frodokem::FrodoKem;
+use std::arch::x86_64::{__get_cpuid_max, __rdtscp};
 use std::str::FromStr;
-use std::sync::atomic::{fence, Ordering};
 use structopt::StructOpt;
 
 mod baseline;
@@ -62,6 +61,7 @@ impl MeasureSource {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn clflush_inputs(toflush: Vec<&[u8]>) {
         toflush.iter().for_each(|slice| {
             // Step by 64 since we assume a 64 byte cache line size
@@ -72,21 +72,24 @@ impl MeasureSource {
         });
     }
 
-    pub fn measure<F: FnMut() -> Result<InternalMeasurments, String>>(
+    pub fn measure_decap<FRODO: FrodoKem>(
         &self,
-        mut to_measure: F,
+        ct: &mut FRODO::Ciphertext,
+        ss: &mut FRODO::SharedSecret,
+        sk: &mut FRODO::SecretKey,
     ) -> Result<Option<u64>, String> {
         match self {
             MeasureSource::External => {
+                // We don't flush the cache anymore, instead we warm it up.
+                // Self::clflush_inputs(vec![ct.as_slice(), ss.as_slice(), sk.as_slice()]);
+                FRODO::decaps(ct, ss, sk)?; //Warm up the cache
                 let mut cpu_core_ident_start = 0u32;
                 let mut cpu_core_ident_stop = 0u32;
-                fence(Ordering::SeqCst);
+                let _ = unsafe { __get_cpuid_max(0) }; //Serializing instruction
                 let start = unsafe { __rdtscp(&mut cpu_core_ident_start) };
-                fence(Ordering::SeqCst);
-                let _ = to_measure()?;
-                fence(Ordering::SeqCst);
+                FRODO::decaps(ct, ss, sk)?;
                 let stop = unsafe { __rdtscp(&mut cpu_core_ident_stop) };
-                fence(Ordering::SeqCst);
+                let _ = unsafe { __get_cpuid_max(0) }; //Serializing instruction
                 if cpu_core_ident_start == cpu_core_ident_stop {
                     Ok(Some(stop - start))
                 } else {
@@ -95,11 +98,11 @@ impl MeasureSource {
                 }
             }
             MeasureSource::Internal => {
-                let results = to_measure()?;
+                let results = FRODO::decaps_measure(ct, ss, sk)?;
                 Ok(results.memcmp_timing)
             }
             MeasureSource::Oracle => {
-                let results = to_measure()?;
+                let results = FRODO::decaps_measure(ct, ss, sk)?;
                 if let Some(memcmp1) = results.memcmp1 {
                     //memcmp1 has executed
                     let mut time = 100; //base timing
