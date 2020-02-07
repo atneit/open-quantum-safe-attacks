@@ -284,9 +284,7 @@ fn expect_value<FRODO: FrodoKem>(
         "Running another check on {} with {} iterations to confirm that we get the expected results.",
         test, state.iterations
     );
-    let mut attempt = 0;
-    loop {
-        attempt += 1;
+    let mut loop_body = || {
         let rec1 = mod_measure::<FRODO, _>(
             test,
             index_ij,
@@ -303,10 +301,18 @@ fn expect_value<FRODO: FrodoKem>(
                 Some(cutoff),
             ),
         )?;
-        let percentage = state.get_percentage(&rec1)?;
-        recorders.push(rec1);
-        match state.threshold.as_ref().unwrap().distinguish(percentage) {
-            Ok(modcase) if modcase == expect_modcase => break, //This is good
+        let percentage = {
+            let ret = state.get_percentage(&rec1);
+            recorders.push(rec1);
+            ret?
+        };
+        Ok(expect_modcase == state.threshold.as_ref().unwrap().distinguish(percentage)?)
+    };
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match loop_body() {
+            Ok(expected) if expected => break, //This is good
             Ok(_) => {
                 //This is bad
                 error!(
