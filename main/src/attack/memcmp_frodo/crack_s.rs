@@ -158,6 +158,7 @@ impl SearchState {
                     self.consecutive_low_changes += 1;
                     self.consecutive_high_changes = 0;
                     if currentmod == self.lowlim {
+                        self.lowlim_confirmed = true;
                         info!(
                             "C[{}/{}] => Confirmed lowerbound {}!",
                             self.index_ij, self.maxindex, currentmod
@@ -181,6 +182,7 @@ impl SearchState {
                     self.consecutive_low_changes = 0;
                     self.consecutive_high_changes += 1;
                     if currentmod == self.highlim {
+                        self.highlim_confirmed = true;
                         info!(
                             "C[{}/{}] => Confirmed upperbound {}!",
                             self.index_ij, self.maxindex, currentmod
@@ -252,6 +254,9 @@ impl SearchState {
             } else {
                 self.confirming_bounds = true;
             }
+        } else {
+            self.highlim_confirmed = false;
+            self.lowlim_confirmed = false;
         }
 
         Ok(None)
