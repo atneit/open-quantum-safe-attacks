@@ -72,8 +72,6 @@ struct SearchState {
     pub lowlim: u16,
     pub consecutive_high_changes: u8,
     pub consecutive_low_changes: u8,
-    pub prev_highlim: u16,
-    pub prev_lowlim: u16,
     pub lowmodpercentage: Option<f64>,
     pub threshold: Option<Threshold>,
     pub iterations_binsearch: u64,
@@ -113,28 +111,14 @@ impl SearchState {
                 // Both boundaries have now moved, we continue with normal binary search.
                 if self.consecutive_low_changes >= CONSECUTIVE_LIMIT_CHANGE {
                     warn!("Upperbound ({}) has not changed for a while, it might be erronous, let's check it again", self.highlim);
-                    let midpoint = self.highlim;
-                    if self.prev_highlim == self.highlim {
-                        self.highlim = self.prev_highlim;
-                        self.prev_highlim = self.maxmod;
-                    } else {
-                        self.highlim = self.prev_highlim;
-                    }
                     self.consecutive_low_changes = 0;
                     self.consecutive_high_changes = 0;
-                    midpoint
+                    self.highlim
                 } else if self.consecutive_high_changes >= CONSECUTIVE_LIMIT_CHANGE {
                     warn!("Lowerbound ({}) has not changed for a while, it might be erronous, let's check it again", self.lowlim);
-                    let midpoint = self.lowlim;
-                    if self.prev_lowlim == self.lowlim {
-                        self.lowlim = self.prev_lowlim;
-                        self.prev_lowlim = 0;
-                    } else {
-                        self.lowlim = self.prev_lowlim;
-                    }
                     self.consecutive_low_changes = 0;
                     self.consecutive_high_changes = 0;
-                    midpoint
+                    self.lowlim
                 } else {
                     (self.highlim + self.lowlim) / 2
                 }
@@ -153,24 +137,48 @@ impl SearchState {
                 ModCase::TooLowMod => {
                     self.consecutive_low_changes += 1;
                     self.consecutive_high_changes = 0;
-                    info!(
-                        "C[{}/{}] => +Raising lowerbound to {}",
-                        self.index_ij, self.maxindex, currentmod
-                    );
-                    self.prev_lowlim = self.lowlim;
-                    self.lowlim = currentmod;
-                    self.low_moved = true;
+                    if currentmod == self.lowlim {
+                        info!(
+                            "C[{}/{}] => Confirmed lowerbound {}!",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                    } else if currentmod == self.highlim {
+                        error!(
+                            "C[{}/{}] => Conflicting results for previous upperbound {}!",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                        return Err(SearchError::RetryIndex);
+                    } else {
+                        info!(
+                            "C[{}/{}] => +Raising lowerbound to {}",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                        self.lowlim = currentmod;
+                        self.low_moved = true;
+                    }
                 }
                 ModCase::TooHighMod => {
                     self.consecutive_low_changes = 0;
                     self.consecutive_high_changes += 1;
-                    info!(
-                        "C[{}/{}] => -Lowering upperbound to {}",
-                        self.index_ij, self.maxindex, currentmod
-                    );
-                    self.prev_highlim = self.highlim;
-                    self.highlim = currentmod;
-                    self.high_moved = true;
+                    if currentmod == self.highlim {
+                        info!(
+                            "C[{}/{}] => Confirmed upperbound {}!",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                    } else if currentmod == self.lowlim {
+                        error!(
+                            "C[{}/{}] => Conflicting results for previous lowerbound {}!",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                        return Err(SearchError::RetryIndex);
+                    } else {
+                        info!(
+                            "C[{}/{}] => -Lowering upperbound to {}",
+                            self.index_ij, self.maxindex, currentmod
+                        );
+                        self.highlim = currentmod;
+                        self.high_moved = true;
+                    }
                 }
             }
         } else if let Some(threshold_lowpercentage) = self.lowmodpercentage {
@@ -258,8 +266,6 @@ fn search_modification<FRODO: FrodoKem>(
         maxindex: FRODO::C::len() - 1,
         highlim: 2, // This ensures that we try 1 first
         lowlim: 0,  // This ensures that we try 1 first
-        prev_highlim: maxmod,
-        prev_lowlim: 1,
         consecutive_high_changes: 0,
         consecutive_low_changes: 0,
         lowmodpercentage: None,

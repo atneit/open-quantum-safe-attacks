@@ -81,7 +81,7 @@ prevmin = None
 for (i, col) in enumerate(columns):
     height -= heightstep
     d = usecol(col)
-    axis = sns.distplot(d, label=getlabel(col), kde=True, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
+    axis = sns.distplot(d, label=getlabel(col), kde=False, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
     #axis = sns.kdeplot(d, label=getlabel(col), cut=0, ax=axis, color=colors[i])
     mean = d.mean()
     minimum = d.min()
@@ -94,7 +94,9 @@ for (i, col) in enumerate(columns):
         print("len: {}({})={}%, [{}] {} mean: {}, min: {}".format(len(d), origlen, percentage, index, col, mean, minimum))
     prevmean = mean
     prevmin = minimum
-    axis = sns.rugplot([mean], height=height, ax=axis, color=colors[i])
+    #axis = sns.rugplot([mean], height=0.1, ax=axis, color=colors[i])
+
+    axis = sns.rugplot([data[col][int(origlen/100)]], ax=axis, color=colors[i])
 
 axis.autoscale()
 
