@@ -9,7 +9,7 @@ use log::{debug, error, info, log, trace, warn, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
-use std::ops::Range;
+use std::ops::{RangeFrom, RangeTo};
 use std::path::PathBuf;
 
 const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
@@ -30,12 +30,12 @@ impl<S: ToString> From<S> for SearchError {
 
 #[derive(Debug)]
 struct Threshold {
-    pub goodhighrange: std::ops::RangeFrom<f64>,
-    pub goodlowrange: std::ops::RangeTo<f64>,
+    pub goodhighrange: RangeFrom<f64>,
+    pub goodlowrange: RangeTo<f64>,
     pub midpoint: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ModCase {
     TooLowMod,
     TooHighMod,
@@ -81,7 +81,7 @@ struct SearchState {
     pub low_moved: bool,
     pub high_moved: bool,
     pub valuelimit: u64,
-    pub value_range_1p: Option<Range<u64>>,
+    pub value_range_1p: Option<RangeTo<u64>>,
 }
 
 impl SearchState {
@@ -254,16 +254,126 @@ impl SearchState {
         } else {
             // We are in the second part of the profiling phase
             let diff = self.valuelimit - limit_1p;
-            let low = limit_1p - diff / 2;
             let high = self.valuelimit + diff / 2;
-            self.value_range_1p = Some(low..high);
+            self.value_range_1p = Some(..high); // We don't have a lower limit since we, havn't had any problems with those values
             info!(
                 "using {:?} as the range we use as the 1%-based sanity checks for all measurments.",
-                self.valuelimit
+                self.value_range_1p
             );
         }
         Ok(recorder.percentage_lte(self.valuelimit))
     }
+}
+
+fn expect_value<FRODO: FrodoKem>(
+    test: u16,
+    expect_modcase: ModCase,
+    expected_x0: u16,
+    ciphertext_index: usize,
+    index_ij: usize,
+    state: &mut SearchState,
+    ciphertext: &mut FRODO::Ciphertext,
+    shared_secret_d: &mut FRODO::SharedSecret,
+    secret_key: &mut FRODO::SecretKey,
+    measure_source: &MeasureSource,
+    cutoff: u64,
+    recorders: &mut Vec<Recorder<SaveAllRecorder>>,
+) -> Result<(), SearchError> {
+    // Check that the value is indeed a "too low" mod
+    info!(
+        "Running another check on {} with {} iterations to confirm that we get the expected results.",
+        test, state.iterations
+    );
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        let rec1 = mod_measure::<FRODO, _>(
+            test,
+            index_ij,
+            state.iterations,
+            &measure_source,
+            ciphertext,
+            shared_secret_d,
+            secret_key,
+            Recorder::saveall(
+                format!(
+                    "{}-BINSEARCH[{}]({}){{{}}}-confirmation",
+                    ciphertext_index, index_ij, expected_x0, test
+                ),
+                Some(cutoff),
+            ),
+        )?;
+        let percentage = state.get_percentage(&rec1)?;
+        recorders.push(rec1);
+        match state.threshold.as_ref().unwrap().distinguish(percentage) {
+            Ok(modcase) if modcase == expect_modcase => break, //This is good
+            Ok(_) => {
+                //This is bad
+                error!(
+                    "Could not confirm x0 value {} (expected it to be {})",
+                    test, expected_x0
+                );
+                return Err(SearchError::RetryIndex);
+            }
+            Err(SearchError::RetryMod) | Err(SearchError::RetryIndex) => {
+                if attempt > MAX_MOD_RETRIES {
+                    error!("Too many retries, could not confirm the value we found!");
+                    return Err(SearchError::RetryIndex);
+                } else {
+                    warn!("Adding more measurments to try to confirm the value we found!");
+                }
+            } //We try again
+            Err(error) => return Err(error),
+        }
+    }
+
+    Ok(())
+}
+
+fn confirm_value<FRODO: FrodoKem>(
+    found: u16,
+    expected_x0: u16,
+    ciphertext_index: usize,
+    index_ij: usize,
+    state: &mut SearchState,
+    ciphertext: &mut FRODO::Ciphertext,
+    shared_secret_d: &mut FRODO::SharedSecret,
+    secret_key: &mut FRODO::SecretKey,
+    measure_source: &MeasureSource,
+    cutoff: u64,
+    recorders: &mut Vec<Recorder<SaveAllRecorder>>,
+) -> Result<(), SearchError> {
+    // Okay we have a value, let's just recheck it to confirm
+    expect_value::<FRODO>(
+        found,
+        ModCase::TooLowMod,
+        expected_x0,
+        ciphertext_index,
+        index_ij,
+        state,
+        ciphertext,
+        shared_secret_d,
+        secret_key,
+        measure_source,
+        cutoff,
+        recorders,
+    )?;
+
+    expect_value::<FRODO>(
+        found + 1,
+        ModCase::TooHighMod,
+        expected_x0,
+        ciphertext_index,
+        index_ij,
+        state,
+        ciphertext,
+        shared_secret_d,
+        secret_key,
+        measure_source,
+        cutoff,
+        recorders,
+    )?;
+    Ok(())
 }
 
 #[logfn_inputs(Trace)]
@@ -386,6 +496,28 @@ fn search_modification<FRODO: FrodoKem>(
             Err(err) => return Err(err),
         }
     };
+
+    // Okay we have a value, let's just recheck it to confirm
+    let res = confirm_value::<FRODO>(
+        found,
+        expected_x0,
+        ciphertext_index,
+        index_ij,
+        &mut state,
+        ciphertext,
+        shared_secret_d,
+        secret_key,
+        measure_source,
+        cutoff,
+        recorders,
+    );
+
+    // Save measurments to file?
+    if let Some(path) = save_to_file {
+        debug!("Saving measurments to file {:?}", path);
+        save_to_csv(&path, &recorders)?;
+    }
+    res?;
 
     Ok(found)
 }
