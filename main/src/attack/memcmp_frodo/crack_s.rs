@@ -9,6 +9,7 @@ use log::{debug, error, info, log, trace, warn, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
 use oqs::frodokem::KemBuf;
+use std::ops::Range;
 use std::path::PathBuf;
 
 const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
@@ -80,6 +81,7 @@ struct SearchState {
     pub low_moved: bool,
     pub high_moved: bool,
     pub valuelimit: u64,
+    pub value_range_1p: Option<Range<u64>>,
 }
 
 impl SearchState {
@@ -233,12 +235,32 @@ impl SearchState {
     }
 
     fn get_percentage(&mut self, recorder: &Recorder<SaveAllRecorder>) -> Result<f64, SearchError> {
+        let limit_1p = recorder
+            .nth_lowest_value(recorder.len() / 100)
+            .ok_or_else(|| {
+                warn!("Not enough recorded values to check the 1% limit");
+                SearchError::RetryIndex
+            })?; //Not enugh recorded values
         if self.threshold.is_none() && self.lowmodpercentage.is_none() {
             // We are in the first part of the profiling phase
-            self.valuelimit = recorder
-                .nth_lowest_value(recorder.len() / 100)
-                .ok_or(SearchError::RetryIndex)?; //Not enugh recorded values
+            self.valuelimit = limit_1p;
             info!("using {} as the valuelimit below which we calculate the percentage of the number of measurments.", self.valuelimit);
+        } else if let Some(range) = &self.value_range_1p {
+            // Do a sanity check so that the 1% limit is not too far away
+            if !range.contains(&limit_1p) {
+                error!("Sanity check failed: {} not in range {:?}", limit_1p, range);
+                return Err(SearchError::RetryIndex);
+            }
+        } else {
+            // We are in the second part of the profiling phase
+            let diff = self.valuelimit - limit_1p;
+            let low = limit_1p - diff / 2;
+            let high = self.valuelimit + diff / 2;
+            self.value_range_1p = Some(low..high);
+            info!(
+                "using {:?} as the range we use as the 1%-based sanity checks for all measurments.",
+                self.valuelimit
+            );
         }
         Ok(recorder.percentage_lte(self.valuelimit))
     }
@@ -276,6 +298,7 @@ fn search_modification<FRODO: FrodoKem>(
         low_moved: false,
         high_moved: false,
         valuelimit: 0,
+        value_range_1p: None,
     };
     let mut retries = 0;
     let found = loop {
