@@ -80,6 +80,8 @@ impl MeasureSource {
     ) -> Result<Option<u64>, String> {
         match self {
             MeasureSource::External => {
+                // Attempt manual-brute force memory alignment of the code (see script/set-code-alignment.sh)
+                memshift!();
                 // We don't flush the cache anymore, instead we warm it up.
                 // Self::clflush_inputs(vec![ct.as_slice(), ss.as_slice(), sk.as_slice()]);
                 FRODO::decaps(ct, ss, sk)?; //Warm up the cache

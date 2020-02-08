@@ -5,6 +5,7 @@ use structopt::clap::Shell;
 use structopt::StructOpt;
 
 mod attack;
+mod code_align;
 mod utils;
 
 #[derive(StructOpt, Debug)]
