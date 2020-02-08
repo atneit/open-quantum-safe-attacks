@@ -1,4 +1,7 @@
 {
     "C_Cpp.formatting": "Disabled",
-    "python.pythonPath": "/usr/bin/python3"
+    "python.pythonPath": "C:\\Users\\alexc\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+    "[python]": {
+        "editor.formatOnSave": false
+    }
 }

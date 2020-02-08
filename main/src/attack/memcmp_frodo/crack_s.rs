@@ -373,15 +373,19 @@ fn search_modification<FRODO: FrodoKem>(
         )?;
 
         // Compute a single representative datapoint
-        let percentage = state.get_percentage(&rec)?;
-        debug!("percentage measurment is {}", percentage);
+        let percentage = {
+            let res = state.get_percentage(&rec);
 
-        // Save measurments to file?
-        if let Some(path) = save_to_file {
-            recorders.push(rec);
-            debug!("Saving measurments to file {:?}", path);
-            save_to_csv(&path, &recorders)?;
-        }
+            // Save measurments to file?
+            if let Some(path) = save_to_file {
+                recorders.push(rec);
+                debug!("Saving measurments to file {:?}", path);
+                save_to_csv(&path, &recorders)?;
+            }
+
+            res?
+        };
+        debug!("percentage measurment is {}", percentage);
 
         // Threshold handling
         match state.update_state(percentage, currentmod) {

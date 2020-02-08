@@ -1,3 +1,155 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a739f78405255f26ec56af4c8a05304c87f74550c25409889a077d9cbbfb128b
-size 22303
+2020-02-08 15:11:09,052 DEBUG [oqs_afw] command line arguments parsed: ProgramArgs { loglevel: Debug, command: Attack(AttackOptions { attack: MemcmpFrodoCrackS { params: FrodoKem1344aes, warmup: 3000, profiling: 10000, iterations: 5000, save_to_file: Some("./data/profiling-1344-laptop-countminval-10000-5000-5.csv"), measure_source: External } }) }
+2020-02-08 15:11:09,052 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Launching the crack_s routine against FrodoKem1344aes MEMCMP vulnerability.
+2020-02-08 15:11:09,052 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Generating keypair
+2020-02-08 15:11:09,064 INFO  [oqs_afw::attack::memcmp_frodo] Setting CPU affinity to core: CoreId { id: 1 }, other candidates were: [CoreId { id: 0 }]
+2020-02-08 15:11:09,064 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Using encaps to generate ciphertext number: 0
+2020-02-08 15:11:09,071 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Starting 3000 warmup iterations without modifications in order to detect a good cutoff value
+2020-02-08 15:11:46,257 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using 14303049 as the cutoff value to remove outliers (minimum warmup latency: 14141343, mean: 14222196).
+2020-02-08 15:11:46,257 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Starting binary search for Eppp[7,0], expect to find x0 = 2042
+2020-02-08 15:11:46,257 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1 to C[56] with 10000 iterations.
+2020-02-08 15:13:50,166 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using 14158332 as the valuelimit below which we calculate the percentage of the number of measurments.
+2020-02-08 15:13:50,166 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 0.997506234413965
+2020-02-08 15:13:50,166 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:13:50,168 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Percentage of values below limit for high amount of modifications: 0.997506234413965
+2020-02-08 15:13:50,168 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 4095 to C[56] with 10000 iterations.
+2020-02-08 15:15:54,062 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using Some(..14159966) as the range we use as the 1%-based sanity checks for all measurments.
+2020-02-08 15:15:54,062 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 7.150608947304956
+2020-02-08 15:15:54,062 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:15:54,065 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Percentage of values below limit for low amount of modifications: 7.150608947304956
+2020-02-08 15:15:54,065 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] New threshold is: Threshold { goodhighrange: 5.6123332690822085.., goodlowrange: ..2.535781912636713, midpoint: 4.074057590859461 } (diff: 6.153102712890991)
+2020-02-08 15:15:54,065 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 2048 to C[56] with 5000 iterations.
+2020-02-08 15:16:56,034 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 7.065750736015702
+2020-02-08 15:16:56,034 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:16:56,038 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 2048
+2020-02-08 15:16:56,038 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Skewing the binsearch uwards, 2048 - (2048 - 0) / 8 = 1792
+2020-02-08 15:16:56,038 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1792 to C[56] with 5000 iterations.
+2020-02-08 15:17:57,959 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 1.1671335200746966
+2020-02-08 15:17:57,959 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:17:57,963 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1792
+2020-02-08 15:17:57,963 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1920 to C[56] with 5000 iterations.
+2020-02-08 15:18:59,889 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 1.1173184357541899
+2020-02-08 15:18:59,889 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:18:59,895 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1920
+2020-02-08 15:18:59,895 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1984 to C[56] with 5000 iterations.
+2020-02-08 15:20:01,912 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] Sanity check failed: 14160535 not in range ..14159966
+2020-02-08 15:20:01,912 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Retrying the search since we didn't get any results.
+2020-02-08 15:20:01,912 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Starting 3000 warmup iterations without modifications in order to detect a good cutoff value
+2020-02-08 15:20:39,089 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using 14287155 as the cutoff value to remove outliers (minimum warmup latency: 14157435, mean: 14222295).
+2020-02-08 15:20:39,089 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Starting binary search for Eppp[7,0], expect to find x0 = 2042
+2020-02-08 15:20:39,089 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1 to C[56] with 10000 iterations.
+2020-02-08 15:22:43,112 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using 14159973 as the valuelimit below which we calculate the percentage of the number of measurments.
+2020-02-08 15:22:43,112 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 0.9908735332464147
+2020-02-08 15:22:43,112 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:22:43,119 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Percentage of values below limit for high amount of modifications: 0.9908735332464147
+2020-02-08 15:22:43,119 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 4095 to C[56] with 10000 iterations.
+2020-02-08 15:24:46,972 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] using Some(..14162397) as the range we use as the 1%-based sanity checks for all measurments.
+2020-02-08 15:24:46,972 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 11.732786687567827
+2020-02-08 15:24:46,972 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:24:46,980 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Percentage of values below limit for low amount of modifications: 11.732786687567827
+2020-02-08 15:24:46,980 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] New threshold is: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 } (diff: 10.741913154321413)
+2020-02-08 15:24:46,980 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 2048 to C[56] with 5000 iterations.
+2020-02-08 15:25:48,902 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 51.12651646447141
+2020-02-08 15:25:48,902 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:25:48,911 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 2048
+2020-02-08 15:25:48,911 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Skewing the binsearch uwards, 2048 - (2048 - 0) / 8 = 1792
+2020-02-08 15:25:48,911 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1792 to C[56] with 5000 iterations.
+2020-02-08 15:26:50,844 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 2.850299401197605
+2020-02-08 15:26:50,844 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:26:50,853 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1792
+2020-02-08 15:26:50,853 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1920 to C[56] with 5000 iterations.
+2020-02-08 15:27:52,745 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 37.23228995057661
+2020-02-08 15:27:52,745 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:27:52,755 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 1920
+2020-02-08 15:27:52,755 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1856 to C[56] with 5000 iterations.
+2020-02-08 15:28:54,752 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 1.5737874097007225
+2020-02-08 15:28:54,752 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:28:54,763 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1856
+2020-02-08 15:28:54,763 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1888 to C[56] with 5000 iterations.
+2020-02-08 15:29:56,802 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 1.0089991818925552
+2020-02-08 15:29:56,802 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:29:56,814 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1888
+2020-02-08 15:29:56,814 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1904 to C[56] with 5000 iterations.
+2020-02-08 15:30:58,717 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 40.41227229146692
+2020-02-08 15:30:58,717 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:30:58,729 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 1904
+2020-02-08 15:30:58,729 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1896 to C[56] with 5000 iterations.
+2020-02-08 15:32:00,665 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 32.98636926889715
+2020-02-08 15:32:00,665 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:32:00,678 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 1896
+2020-02-08 15:32:00,678 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1892 to C[56] with 5000 iterations.
+2020-02-08 15:33:02,617 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 5.450180072028812
+2020-02-08 15:33:02,617 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:33:02,630 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 5.450180072028812 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:33:02,630 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:33:02,630 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1892 to C[56] with 5000 iterations.
+2020-02-08 15:34:04,570 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 5.735241072502104
+2020-02-08 15:34:04,570 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:34:04,584 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 5.735241072502104 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:34:04,584 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:34:04,584 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1892 to C[56] with 5000 iterations.
+2020-02-08 15:35:06,545 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 4.9340774892825365
+2020-02-08 15:35:06,545 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:35:06,562 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 4.9340774892825365 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:35:06,562 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Discarding data for this modification, trying again!
+2020-02-08 15:35:06,562 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1892 to C[56] with 5000 iterations.
+2020-02-08 15:36:08,548 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 1.6721560678996705
+2020-02-08 15:36:08,548 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:36:08,566 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1892
+2020-02-08 15:36:08,566 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:37:10,537 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 7.85392696348174
+2020-02-08 15:37:10,537 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:37:10,556 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 7.85392696348174 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:37:10,556 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:37:10,556 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:38:12,502 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 6.209797130133597
+2020-02-08 15:38:12,502 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:38:12,521 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 6.209797130133597 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:38:12,521 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:38:12,521 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:39:14,484 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 5.466688654353562
+2020-02-08 15:39:14,484 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:39:14,503 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 5.466688654353562 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:39:14,503 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Discarding data for this modification, trying again!
+2020-02-08 15:39:14,503 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:40:16,478 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 2.4066182000501377
+2020-02-08 15:40:16,478 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:40:16,499 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => +Raising lowerbound to 1894
+2020-02-08 15:40:16,499 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1895 to C[56] with 5000 iterations.
+2020-02-08 15:41:18,452 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 5.859279235106643
+2020-02-08 15:41:18,452 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:41:18,474 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 5.859279235106643 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:41:18,474 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:41:18,474 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1895 to C[56] with 5000 iterations.
+2020-02-08 15:42:20,372 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 13.337327741162373
+2020-02-08 15:42:20,372 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:42:20,394 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => -Lowering upperbound to 1895
+2020-02-08 15:42:20,394 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Trying to confirm the upperbound of our candidate value: 1894
+2020-02-08 15:42:20,394 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1895 to C[56] with 5000 iterations.
+2020-02-08 15:43:22,324 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 7.142857142857142
+2020-02-08 15:43:22,324 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:43:22,347 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 7.142857142857142 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:43:22,347 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:43:22,347 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Trying to confirm the upperbound of our candidate value: 1894
+2020-02-08 15:43:22,347 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1895 to C[56] with 5000 iterations.
+2020-02-08 15:44:24,318 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 5.0287532117949345
+2020-02-08 15:44:24,318 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:44:24,342 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 5.0287532117949345 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:44:24,342 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:44:24,342 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Trying to confirm the upperbound of our candidate value: 1894
+2020-02-08 15:44:24,342 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1895 to C[56] with 5000 iterations.
+2020-02-08 15:45:26,259 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 14.66320823538948
+2020-02-08 15:45:26,259 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:45:26,283 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Confirmed upperbound 1895!
+2020-02-08 15:45:26,283 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Trying to confirm the lowerbound of our candidate value: 1894
+2020-02-08 15:45:26,283 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:46:28,208 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 7.844069408129309
+2020-02-08 15:46:28,208 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:46:28,233 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] percentage 7.844069408129309 outside of expected ranges: Threshold { goodhighrange: 9.047308398987475.., goodlowrange: ..3.676351821826768, midpoint: 6.361830110407121 }
+2020-02-08 15:46:28,233 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Adding more measurments of the same modification!
+2020-02-08 15:46:28,233 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Trying to confirm the lowerbound of our candidate value: 1894
+2020-02-08 15:46:28,233 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Testing adding 1894 to C[56] with 5000 iterations.
+2020-02-08 15:47:30,133 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] percentage measurment is 24.583729781160798
+2020-02-08 15:47:30,133 DEBUG [oqs_afw::attack::memcmp_frodo::crack_s] Saving measurments to file "./data/profiling-1344-laptop-countminval-10000-5000-5.csv"
+2020-02-08 15:47:30,158 ERROR [oqs_afw::attack::memcmp_frodo::crack_s] C[56/63] => Conflicting results for lowerbound 1894!
+2020-02-08 15:47:30,158 WARN  [oqs_afw::attack::memcmp_frodo::crack_s] Retrying the search since we didn't get any results.
+2020-02-08 15:47:30,158 INFO  [oqs_afw::attack::memcmp_frodo::crack_s] Starting 3000 warmup iterations without modifications in order to detect a good cutoff value
