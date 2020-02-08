@@ -15,6 +15,7 @@ use std::path::PathBuf;
 const LOW_PERCENTAGE_LIMIT: f64 = 2.5;
 const CONSECUTIVE_LIMIT_CHANGE: u8 = 3;
 const MAX_MOD_RETRIES: u8 = 6;
+const MAX_BINARYSEARCH_ATTEMPTS: u8 = 3;
 
 enum SearchError {
     Internal(String),
@@ -267,7 +268,7 @@ impl SearchState {
             .nth_lowest_value(recorder.len() / 100)
             .ok_or_else(|| {
                 warn!("Not enough recorded values to check the 1% limit");
-                SearchError::RetryIndex
+                SearchError::RetryMod
             })?; //Not enugh recorded values
         if self.threshold.is_none() && self.lowmodpercentage.is_none() {
             // We are in the first part of the profiling phase
@@ -277,12 +278,12 @@ impl SearchState {
             // Do a sanity check so that the 1% limit is not too far away
             if !range.contains(&limit_1p) {
                 error!("Sanity check failed: {} not in range {:?}", limit_1p, range);
-                return Err(SearchError::RetryIndex);
+                return Err(SearchError::RetryMod);
             }
         } else {
             // We are in the second part of the profiling phase
             let diff = self.valuelimit - limit_1p;
-            let high = self.valuelimit + diff / 2;
+            let high = self.valuelimit + diff;
             self.value_range_1p = Some(..high); // We don't have a lower limit since we, havn't had any problems with those values
             info!(
                 "using {:?} as the range we use as the 1%-based sanity checks for all measurments.",
@@ -456,6 +457,7 @@ pub fn crack_s<FRODO: FrodoKem>(
 
     let mut indexes = 0.0;
     let mut succeses = 0.0;
+    let mut skipped = 0.0;
 
     for t in 0..nbr_encaps {
         info!("Using encaps to generate ciphertext number: {}", t);
@@ -467,8 +469,10 @@ pub fn crack_s<FRODO: FrodoKem>(
             // Modify ciphertext at C[nbar-1, j]
             let index = i * nbar + j;
             let expected_x0 = (err_corr_limit - expectedEppp[index]) as u16;
+            let mut attempt = 0;
 
             let x0 = loop {
+                attempt += 1;
                 info!(
                     "Starting {} warmup iterations without modifications in order to detect a good cutoff value", warmup
                 );
@@ -494,8 +498,8 @@ pub fn crack_s<FRODO: FrodoKem>(
                 };
 
                 info!(
-                    "Starting binary search for Eppp[{},{}], expect to find x0 = {}",
-                    i, j, expected_x0
+                    "Starting binary search {}/{} for Eppp[{},{}], expect to find x0 = {}",
+                    attempt, MAX_BINARYSEARCH_ATTEMPTS, i, j, expected_x0
                 );
                 match search_modification::<FRODO>(
                     t,
@@ -511,9 +515,12 @@ pub fn crack_s<FRODO: FrodoKem>(
                     save_to_file.as_ref(),
                     &mut recorders,
                 ) {
-                    Ok(x0) => break x0,
+                    Ok(x0) => break Some(x0),
                     Err(SearchError::Internal(err)) => return Err(err),
                     Err(_) => {
+                        if attempt >= MAX_BINARYSEARCH_ATTEMPTS {
+                            break None;
+                        }
                         //RetryIndex and RetryMod
                         warn!("Retrying the search since we didn't get any results.");
                     }
@@ -521,24 +528,35 @@ pub fn crack_s<FRODO: FrodoKem>(
             };
 
             indexes += 1.0;
-            let Eppp_ij = err_corr_limit - x0 - 1; //TODO, find out why we need a -1 here
-            let lglvl = if Eppp_ij != expectedEppp[index] {
-                Level::Warn
+            if let Some(x0) = x0 {
+                let Eppp_ij = err_corr_limit - x0 - 1; //TODO, find out why we need a -1 here
+                let lglvl = if Eppp_ij != expectedEppp[index] {
+                    Level::Warn
+                } else {
+                    succeses += 1.0;
+                    Level::Info
+                };
+                log!(
+                    lglvl,
+                    "Found -Eppp[{},{}]={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
+                    i,
+                    j,
+                    Eppp_ij,
+                    expectedEppp[index],
+                    succeses,
+                    indexes,
+                    (succeses / indexes) * 100.0
+                );
             } else {
-                succeses += 1.0;
-                Level::Info
-            };
-            log!(
-                lglvl,
-                "Found -Eppp[{},{}]={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
-                i,
-                j,
-                Eppp_ij,
-                expectedEppp[index],
-                succeses,
-                indexes,
-                (succeses / indexes) * 100.0
-            );
+                skipped += 1.0;
+                error!("Max number of attempts ({}) reached! Current success rate is: {:.0}/{:.0}={} ({:.0} skipped)", 
+                    attempt,
+                    succeses,
+                    indexes,
+                    (succeses / indexes) * 100.0,
+                    skipped
+                );
+            }
         }
     }
 
