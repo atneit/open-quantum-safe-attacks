@@ -8,3 +8,15 @@ data/profiling-1344-laptop-countminval-10000-5000.csv filter=lfs diff=lfs merge=
 data/profiling-1344-laptop-countminval-10000-5000.log filter=lfs diff=lfs merge=lfs -text
 data/profiling-1344-laptop-countminval-10000-5000-2.csv filter=lfs diff=lfs merge=lfs -text
 data/profiling-1344-laptop-countminval-10000-5000-2.log filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-10000-5000.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-3.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-3.log filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-4.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-4.log filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-5.log filter=lfs diff=lfs merge=lfs -text
+data/test.csv filter=lfs diff=lfs merge=lfs -text
+data/baseline-internal-laptop-1344-1000.csv filter=lfs diff=lfs merge=lfs -text
+data/baseline-laptop-1344-1000.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-5.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-6.csv filter=lfs diff=lfs merge=lfs -text
+data/profiling-1344-laptop-countminval-10000-5000-6.log filter=lfs diff=lfs merge=lfs -text
