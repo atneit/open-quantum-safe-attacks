@@ -1,11 +1,14 @@
+#![feature(test)]
+
 //use liboqs_rs_bindings as oqs;
 
 use log::{debug, error};
 use structopt::clap::Shell;
 use structopt::StructOpt;
 
-mod attack;
+#[macro_use]
 mod code_align;
+mod attack;
 mod utils;
 
 #[derive(StructOpt, Debug)]
