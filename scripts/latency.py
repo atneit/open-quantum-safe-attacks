@@ -1,5 +1,6 @@
-import sys
+#!/bin/env python3
 
+import sys
 
 if len(sys.argv) < 4:
     print("Usage: data.csv output.pgf title maximum-value COLUMN1 [COLUMN2 [COLUMN3 [...]]]")
@@ -18,12 +19,12 @@ import matplotlib
 
 if writetofile:
     matplotlib.use("pgf")
-    matplotlib.rcParams.update({
-        "pgf.texsystem": "pdflatex",
-        'font.family': 'serif',
-        'text.usetex': True,
-        'pgf.rcfonts': False
-    })
+matplotlib.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    'font.family': 'serif',
+    'text.usetex': True,
+    'pgf.rcfonts': False
+})
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -80,7 +81,7 @@ prevmin = None
 for (i, col) in enumerate(columns):
     height -= heightstep
     d = usecol(col)
-    axis = sns.distplot(d, label=getlabel(col), kde=False, bins=40, ax=axis, kde_kws={'cut':0}, color=colors[i])
+    axis = sns.distplot(d, label=getlabel(col), kde=True, bins=80, ax=axis, kde_kws={'cut':0, 'bw': 0.1}, color=colors[i])
     #axis = sns.kdeplot(d, label=getlabel(col), cut=0, ax=axis, color=colors[i])
     mean = d.mean()
     minimum = d.min()
@@ -95,14 +96,15 @@ for (i, col) in enumerate(columns):
     prevmin = minimum
     #axis = sns.rugplot([mean], height=0.1, ax=axis, color=colors[i])
 
-    axis = sns.rugplot([data[col][int(origlen/100)]], ax=axis, color=colors[i])
+    if "MINOR" in col:
+        axis = sns.rugplot([data[col][int(origlen/100)]], ax=axis, height=0.2, color=colors[i])
 
 axis.autoscale()
 
 plt.xlabel("Reference clock-cycles")
 plt.ylabel("Density")
 plt.title(title)
-plt.gcf().set_size_inches(w=5.1, h=1.5)
+plt.gcf().set_size_inches(w=5.1, h=2.5)
 plt.legend()
 plt.show()
 
