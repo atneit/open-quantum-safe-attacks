@@ -70,7 +70,7 @@ impl InternalMeasurments {
     }
 }
 
-pub trait KemBuf: Debug {
+pub trait KemBuf: Display + Debug {
     type T: Display + Copy + Default;
     fn new() -> Self;
     fn as_mut_ptr(&mut self) -> *mut Self::T;
@@ -163,6 +163,19 @@ macro_rules! impl_kembuf {
                         for i in 0..s.len() {
                             write!(f, ", {}", s[i])?;
                         }
+                    }
+                }
+                write!(f, "]")
+            }
+        }
+        impl Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let s = self.as_slice();
+                write!(f, "[(len: {})", s.len())?;
+                if s.len() > 0 {
+                    write!(f, " {}", s[0])?;
+                    for i in 0..s.len() {
+                        write!(f, ", {}", s[i])?;
                     }
                 }
                 write!(f, "]")
