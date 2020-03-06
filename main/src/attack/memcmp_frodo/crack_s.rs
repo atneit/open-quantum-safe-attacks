@@ -445,6 +445,8 @@ pub fn crack_s<FRODO: FrodoKem>(
 
     info!("Generating keypair");
     FRODO::keypair(&mut public_key, &mut secret_key)?;
+    debug!("secret key: {}", secret_key);
+    debug!("public key: {}", public_key);
 
     let mut shared_secret_e = FRODO::SharedSecret::new();
     let mut shared_secret_d = FRODO::SharedSecret::new();
@@ -467,6 +469,8 @@ pub fn crack_s<FRODO: FrodoKem>(
     for t in 0..nbr_encaps {
         info!("Using encaps to generate ciphertext number: {}", t);
         FRODO::encaps(&mut ciphertext, &mut shared_secret_e, &mut public_key)?;
+        debug!("ciphertext: {}", ciphertext);
+        debug!("shared secret: {}", shared_secret_e);
         let expectedEppp = FRODO::calculate_Eppp(&mut ciphertext, &mut secret_key)?;
         let expectedEppp = expectedEppp.as_slice();
 
@@ -543,7 +547,7 @@ pub fn crack_s<FRODO: FrodoKem>(
                 };
                 log!(
                     lglvl,
-                    "Found -Eppp[{},{}]={}-{}={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
+                    "Found -Eppp[{},{}]={}-{}={} expected: {}. Current success rate is: {:.0}/{:.0}={} ({:.0} skipped)",
                     i,
                     j,
                     err_corr_limit,
@@ -552,7 +556,8 @@ pub fn crack_s<FRODO: FrodoKem>(
                     expectedEppp[index],
                     succeses,
                     indexes,
-                    (succeses / indexes) * 100.0
+                    (succeses / indexes) * 100.0,
+                    skipped
                 );
             } else {
                 skipped += 1.0;
