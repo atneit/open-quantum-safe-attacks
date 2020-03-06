@@ -1,7 +1,43 @@
 {
     "C_Cpp.formatting": "Disabled",
-    "python.pythonPath": "C:\\Users\\alexc\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+    "python.pythonPath": "/usr/bin/python3",
     "[python]": {
         "editor.formatOnSave": false
-    }
+    },
+    "cSpell.words": [
+        "encaps"
+    ],
+    "cSpell.enabledLanguageIds": [
+        "asciidoc",
+        "c",
+        "cpp",
+        "csharp",
+        "css",
+        "git-commit",
+        "go",
+        "handlebars",
+        "haskell",
+        "html",
+        "jade",
+        "java",
+        "javascript",
+        "javascriptreact",
+        "json",
+        "jsonc",
+        "latex",
+        "less",
+        "markdown",
+        "php",
+        "plaintext",
+        "pug",
+        "python",
+        "restructuredtext",
+        "scala",
+        "scss",
+        "text",
+        "typescript",
+        "typescriptreact",
+        "yaml",
+        "yml"
+    ]
 }

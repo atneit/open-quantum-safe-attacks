@@ -318,7 +318,8 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
     }
 
     fn nth_lowest_value(&self, nth: u64) -> Option<u64> {
-        self.iter().skip((nth - 1) as usize).next()
+        use std::cmp::max;
+        self.iter().skip((max(1, nth) - 1) as usize).next()
     }
 }
 
