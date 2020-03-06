@@ -17,6 +17,7 @@ const CONSECUTIVE_LIMIT_CHANGE: u8 = 3;
 const MAX_MOD_RETRIES: u8 = 6;
 const MAX_BINARYSEARCH_ATTEMPTS: u8 = 3;
 
+#[derive(Debug)]
 enum SearchError {
     Internal(String),
     RetryIndex,
@@ -251,7 +252,7 @@ impl SearchState {
             }
             // Only if the limits have been confirmed do we report our success
             if self.lowlim_confirmed && self.highlim_confirmed {
-                return Ok(Some(self.lowlim));
+                return Ok(Some(self.highlim));
             } else {
                 self.confirming_bounds = true;
             }
@@ -349,7 +350,7 @@ fn search_modification<FRODO: FrodoKem>(
 
         let rec = if retries > 0 {
             // If we are currently retrying we reuse the previous recorder so that we
-            // may aggregate the results and get a better mean value
+            // may aggregate the results and get a better value
             recorders.pop().unwrap()
         } else {
             Recorder::saveall(
@@ -377,8 +378,8 @@ fn search_modification<FRODO: FrodoKem>(
             let res = state.get_percentage(&rec);
 
             // Save measurments to file?
+            recorders.push(rec);
             if let Some(path) = save_to_file {
-                recorders.push(rec);
                 debug!("Saving measurments to file {:?}", path);
                 save_to_csv(&path, &recorders)?;
             }
@@ -533,7 +534,7 @@ pub fn crack_s<FRODO: FrodoKem>(
 
             indexes += 1.0;
             if let Some(x0) = x0 {
-                let Eppp_ij = err_corr_limit - x0 - 1; //TODO, find out why we need a -1 here
+                let Eppp_ij = err_corr_limit - x0;
                 let lglvl = if Eppp_ij != expectedEppp[index] {
                     Level::Warn
                 } else {
@@ -542,9 +543,11 @@ pub fn crack_s<FRODO: FrodoKem>(
                 };
                 log!(
                     lglvl,
-                    "Found -Eppp[{},{}]={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
+                    "Found -Eppp[{},{}]={}-{}={} expected: {}. Current success rate is: {:.0}/{:.0}={}",
                     i,
                     j,
+                    err_corr_limit,
+                    x0,
                     Eppp_ij,
                     expectedEppp[index],
                     succeses,
