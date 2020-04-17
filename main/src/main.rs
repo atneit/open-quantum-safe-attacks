@@ -7,9 +7,8 @@ use structopt::clap::Shell;
 use structopt::StructOpt;
 
 #[macro_use]
-mod code_align;
-mod attack;
 mod utils;
+mod attack;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "command")]

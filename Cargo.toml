@@ -4,3 +4,7 @@ members = [
     "liboqs-rs-bindings",
     "main",
 ]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
