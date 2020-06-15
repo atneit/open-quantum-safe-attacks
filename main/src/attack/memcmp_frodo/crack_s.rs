@@ -8,7 +8,7 @@ use liboqs_rs_bindings as oqs;
 use log::{debug, error, info, log, trace, warn, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
-use oqs::frodokem::KemBuf;
+use oqs::KemBuf;
 use std::ops::{RangeFrom, RangeTo};
 use std::path::PathBuf;
 

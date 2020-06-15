@@ -3,7 +3,8 @@ use crate::utils::Rec;
 use liboqs_rs_bindings as oqs;
 use log::{trace, warn};
 use log_derive::logfn_inputs;
-use oqs::frodokem::{FrodoKem, KemBuf};
+use oqs::frodokem::FrodoKem;
+use oqs::KemBuf;
 use std::convert::TryInto;
 
 #[derive(Debug)]

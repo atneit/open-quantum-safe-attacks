@@ -1,14 +1,16 @@
 mod memcmp_frodo;
 
-use liboqs_rs_bindings::frodokem::{FrodoKem1344aes, FrodoKem640aes};
+use liboqs_rs_bindings as oqs;
 use log_derive::logfn_inputs;
+use memcmp_frodo::FrodoParams;
+use oqs::frodokem::{FrodoKem1344aes, FrodoKem640aes};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "type")]
 pub enum Attacks {
-    /// Run the MEMCPY attack against FrodoKEM640AES
+    /// Run the baseline analysis against FrodoKEM MEMCMP vulnerability
     MemcmpFrodoBaseline {
         #[structopt(subcommand, name = "frodo-params")]
         params: FrodoParams,
@@ -29,6 +31,7 @@ pub enum Attacks {
         #[structopt(short, long)]
         measure_source: memcmp_frodo::MeasureSource,
     },
+    /// Run the MEMCPY attack against FrodoKEM
     MemcmpFrodoCrackS {
         #[structopt(subcommand, name = "frodo-params")]
         params: FrodoParams,
@@ -53,13 +56,6 @@ pub enum Attacks {
         #[structopt(short, long)]
         measure_source: memcmp_frodo::MeasureSource,
     },
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(name = "frodo-params")]
-pub enum FrodoParams {
-    FrodoKem640aes,
-    FrodoKem1344aes,
 }
 
 #[derive(StructOpt, Debug)]

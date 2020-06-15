@@ -9,7 +9,7 @@ use liboqs_rs_bindings as oqs;
 use log::{error, info, warn};
 use log_derive::logfn_inputs;
 use oqs::frodokem::FrodoKem;
-use oqs::frodokem::KemBuf;
+use oqs::KemBuf;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
