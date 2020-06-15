@@ -17,6 +17,13 @@ pub use modify_and_measure::*;
 mod profile;
 pub use profile::*;
 
+#[derive(StructOpt, Debug)]
+#[structopt(name = "frodo-params")]
+pub enum FrodoParams {
+    FrodoKem640aes,
+    FrodoKem1344aes,
+}
+
 #[derive(StructOpt, Debug, Clone, Copy)]
 #[structopt(name = "measure-source")]
 pub enum MeasureSource {

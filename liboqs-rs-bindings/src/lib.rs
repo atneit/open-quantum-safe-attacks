@@ -3,6 +3,8 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 
+use std::fmt::{Debug, Display};
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[derive(Debug)]
@@ -49,6 +51,75 @@ macro_rules! calloqs {
         trace!("liboqs function {} returned {:?}", stringify!($funcname), ret);
         $crate::Result::from(ret)
     }};
+}
+
+pub trait KemBuf: Display + Debug {
+    type T: Display + Copy + Default;
+    fn new() -> Self;
+    fn as_mut_ptr(&mut self) -> *mut Self::T;
+    fn len() -> usize;
+    fn as_slice(&self) -> &[Self::T];
+    fn as_mut_slice(&mut self) -> &mut [Self::T];
+}
+
+macro_rules! impl_kembuf {
+    ($name:ident; $t:ty; $size:expr) => {
+        impl KemBuf for $name {
+            type T = $t;
+            fn new() -> Self {
+                Self([<Self::T as Default>::default(); $size as usize])
+            }
+            fn as_mut_ptr(&mut self) -> *mut $t {
+                self.0.as_mut_ptr()
+            }
+            fn len() -> usize {
+                $size
+            }
+            fn as_slice(&self) -> &[$t] {
+                &self.0[..]
+            }
+            fn as_mut_slice(&mut self) -> &mut [$t] {
+                &mut self.0[..]
+            }
+        }
+        impl Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let s = self.as_slice();
+                write!(f, "[(len: {})", s.len())?;
+                if s.len() > 0 {
+                    write!(f, " {}", s[0])?;
+                    if s.len() > 5 {
+                        for i in 0..5 {
+                            write!(f, ", {}", s[i])?;
+                        }
+                        write!(f, ", ...")?;
+                        let endrange = std::cmp::max(5, s.len() - 5);
+                        for i in endrange..s.len() {
+                            write!(f, ", {}", s[i])?;
+                        }
+                    } else {
+                        for i in 0..s.len() {
+                            write!(f, ", {}", s[i])?;
+                        }
+                    }
+                }
+                write!(f, "]")
+            }
+        }
+        impl Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let s = self.as_slice();
+                write!(f, "[(len: {})", s.len())?;
+                if s.len() > 0 {
+                    write!(f, " {}", s[0])?;
+                    for i in 0..s.len() {
+                        write!(f, ", {}", s[i])?;
+                    }
+                }
+                write!(f, "]")
+            }
+        }
+    };
 }
 
 pub mod frodokem;

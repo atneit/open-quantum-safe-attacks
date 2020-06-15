@@ -6,6 +6,7 @@ use liboqs_rs_bindings as oqs;
 use log::{info, Level};
 use log_derive::logfn_inputs;
 use oqs::frodokem::*;
+use oqs::KemBuf;
 use oqs::Result;
 use std::path::PathBuf;
 

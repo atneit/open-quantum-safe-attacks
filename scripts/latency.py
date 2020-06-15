@@ -56,7 +56,9 @@ if not columns:
             
 
 def usecol(col):
+    print(str(col))
     d = data[col]
+    print(str(d))
     last = int(len(d) * percentage)
     return d[0:last][d < maxval]  #.sample(samplesize)
     
