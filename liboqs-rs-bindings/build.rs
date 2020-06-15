@@ -7,8 +7,8 @@ fn main() {
     // Tell cargo to tell rustc to link the local oqs
     // shared library.
     let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let path_l = Path::new(&dir).join("liboqs/.libs");
-    let path_i = Path::new(&dir).join("liboqs/include/");
+    let path_l = Path::new(&dir).join("liboqs/build/lib/");
+    let path_i = Path::new(&dir).join("liboqs/build/include/");
     let path_i = path_i.display();
     let path_l = path_l.display();
     println!("cargo:rustc-link-search={}", path_l);
