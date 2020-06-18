@@ -4,7 +4,7 @@ Proof-Of-Concept attacks against `liboqs` (Open Quantum Safe).
 
 ## Implemented attacks:
 
-* FrodoKEM FO-transform timing attack [paper here](https://eprint.iacr.org/2020/xxx) (soon)
+* FrodoKEM memcmp timing attack. [Paper here](https://eprint.iacr.org/2020/xxx) (soon)
 
 ## Get the source
 
