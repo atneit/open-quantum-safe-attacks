@@ -1,6 +1,6 @@
-#include "liboqs/include/oqs/oqs.h"
+#include "liboqs/build/include/oqs/oqs.h"
 
-/* We also need the following internal definitions that are not part of the official api */
+/* We also need the following internal definitions that are not part of the official api. */
 
 
 void oqs_kem_frodokem_640_shake_pack(unsigned char *out, const size_t outlen, const uint16_t *in, const size_t inlen, const unsigned char lsb);
