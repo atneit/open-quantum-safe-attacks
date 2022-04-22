@@ -1,2 +1,1 @@
-data/* filter=lfs diff=lfs merge=lfs -text
-bin-archive/* filter=lfs diff=lfs merge=lfs -text
+rejection-sampling-plaintexts.db filter=lfs diff=lfs merge=lfs -text

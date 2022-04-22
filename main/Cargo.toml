@@ -7,10 +7,29 @@ edition = "2018"
 [dependencies]
 liboqs-rs-bindings = {path = "../liboqs-rs-bindings"}
 structopt = "0.3"
-log = "0.4"
+log = {version = "0.4", features = ["release_max_level_info", "max_level_debug"]}
 log-derive = "0.4"
-simple_logger = "1.4"
-hdrhistogram = "7.0"
-csv = "*"
-medianheap = "*"
-core_affinity = "*"
+slog-stdlog = "4.1.0"
+slog = "2.7.0"
+slog-term = "2.7.0"
+slog-scope = "4.4.0"
+slog-async = "2.7.0"
+hdrhistogram = "7.1.0"
+csv = "1.1"
+medianheap = "0.3"
+core_affinity = "0.5"
+rand = { version="0.8", features=["small_rng"] }
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+thread-priority = "0.8.1"
+lazy-regex = "2.2"
+cache_line_size = "1.0"
+process_path = "0.1"
+num = "0.4.0"
+indicatif = "0.16"
+ndarray = "*"
+rusqlite = { version = "0.27.0", features = ["bundled"] }
+libflate = "1.1.1"
+signal-hook = "0.3.13"
+ms-converter = "1.4.0"
+

@@ -1,2 +1,12 @@
 target
 run.log
+scripts/python-virtualenv/
+*.csv
+*.json
+LAC/
+tmp.*
+tmp-output/*
+tmp.*
+build/
+*.err
+*.out

@@ -6,14 +6,161 @@
     "configurations": [
         {
             "type": "lldb",
+            "request": "attach",
+            "name": "Attach to running oqs-afw",
+            "program": "${workspaceFolder}/target/debug/oqs-afw"
+        },
+        {
+            "type": "lldb",
             "request": "custom",
-            "name": "oqs-afw",
+            "name": "oqs-afw attack rejection-sampling bike-message-recovery --destination /tmp/bike-message-distances-debug.csv.gz kem-l1",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- attack rejection-sampling bike-message-recovery --destination /tmp/bike-message-distances-debug.csv.gz kem-l1"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw attack rejection-sampling iteration-timings --db rejection-sampling-plaintexts.db --destination tmp.csv.gz bike kem-l1",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- attack rejection-sampling iteration-timings --db rejection-sampling-plaintexts.db --destination tmp.csv.gz bike kem-l1"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw attack rejection-sampling bike-error-weight -a 1 -b 10 -f 100 -d rejection-sampling-plaintexts.db kem-l1",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- attack rejection-sampling bike-error-weight -a 1 -b 10 -f 100 -d rejection-sampling-plaintexts.db kem-l1"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw attack rejection-sampling hqc-attack-full -d 200 -p 1000 kem128",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- attack rejection-sampling hqc-attack-full -d 200 -p 1000 kem128"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "test",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/deps/oqs_afw-3bbf87d1ea9e6c31"
+            ],
+            "processCreateCommands": [
+                "process launch"
+            ],
+            "preLaunchTask": "cargo test build",
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "postprocess rapl-select scripts/postprocess/selected.csv 10700000 11600000 33 34 0.0015 0.0025 10 rapl-000.csv",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/postprocess.exe"
+            ],
+            "processCreateCommands": [
+                "process launch -- rapl-select scripts/postprocess/selected.csv 10700000 11600000 33 34 0.0015 0.0025 10 rapl-000.csv"
+            ],
+            "preLaunchTask": "cargo build -p postprocess",
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw -l debug attack rapl profile-decapsulation -d 2 -r 2 -a -t 1 -f rapl-frodo1344.csv -s tmp-state-frodo1344.json frodo kem1344aes",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- -l debug attack rapl profile-decapsulation -d 2 -r 2 -a -t 1 -f rapl-frodo1344.csv -s tmp-state-frodo1344.json frodo kem1344aes"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw -l debug attack rejection-sampling hqc-attack -c -r 1 -t 100 kem128",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- -l debug attack rejection-sampling hqc-attack -c -r 1 -t 100 kem128"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw -l info attack memcmp-frodo-crack-s -i 1 -m external -p 1 -w 1 frodo-kem640aes",
             "targetCreateCommands": [
                 "target create ${workspaceFolder}/target/debug/oqs-afw"
             ],
             "processCreateCommands": [
                 "process launch -- -l info attack memcmp-frodo-crack-s -i 1 -m external -p 1 -w 1 frodo-kem640aes"
-            ]
+            ],
+            "preLaunchTask": "cargo build"
         },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "oqs-afw -l info attack cache-attack-frodo-baseline -m external -s 100 -w 100 frodo-kem1344aes",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- -l info attack cache-attack-frodo-baseline -m external -s 100 -w 100 frodo-kem1344aes"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "-l trace attack cache-attack-fo-baseline -m external -e 1 -k 1 -s 1 -w 1 kyber kem512",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- -l trace attack cache-attack-fo-baseline -m external -e 1 -k 1 -s 1 -w 1 kyber kem512"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "-l trace attack fo-multipoint-profiling -e 1 -k 1 -s 100 -f /tmp/test.csv -w 100 kyber kem512",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/debug/oqs-afw"
+            ],
+            "processCreateCommands": [
+                "process launch -- -l trace attack fo-multipoint-profiling -e 1 -k 1 -s 100 -f /tmp/test.csv -w 100 kyber kem512"
+            ],
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "name": "Pyhon: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        }
     ]
 }

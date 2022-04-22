@@ -1,12 +1,8 @@
-use csv;
 use hdrhistogram::Histogram;
 use log::{log, Level};
-use medianheap;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::path::Path;
+use std::{collections::BTreeMap, fmt::Debug, path::Path};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Recorder<R: RecorderBackend> {
     name: String,
     bknd: R,
@@ -16,9 +12,9 @@ pub struct Recorder<R: RecorderBackend> {
 }
 
 impl Recorder<MinVal> {
-    pub fn minval() -> Recorder<MinVal> {
+    pub fn minval<S: ToString>(name: S) -> Recorder<MinVal> {
         Recorder {
-            name: String::new(),
+            name: name.to_string(),
             bknd: MinVal,
             counter: 0,
             min: u64::max_value(),
@@ -82,9 +78,36 @@ impl Recorder<medianheap::MedianHeap<u64>> {
     }
 }
 
+impl Recorder<SimpleHistogram> {
+    #[allow(dead_code)]
+    pub fn simple_histogram<S: ToString>(
+        name: S,
+        low: u64,
+        high: u64,
+        num_bins: usize,
+    ) -> Recorder<SimpleHistogram> {
+        Recorder {
+            name: name.to_string(),
+            bknd: SimpleHistogram {
+                bins: vec![0; num_bins],
+                low,
+                high,
+            },
+            counter: 0,
+            min: u64::max_value(),
+            cutoff: Some(high),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn ref_inner(&self) -> &SimpleHistogram {
+        &self.bknd
+    }
+}
+
 pub struct RecIterSaveAll<'a> {
-    inner: std::collections::btree_map::Iter<'a, u64, u16>,
-    current: Option<(u64, u16)>,
+    inner: std::collections::btree_map::Iter<'a, u64, u32>,
+    current: Option<(u64, u32)>,
 }
 
 pub struct RecMinValIter;
@@ -106,17 +129,25 @@ pub trait RecorderBackend: Debug {}
 
 #[derive(Debug)]
 pub struct SaveAllRecorder {
-    store: BTreeMap<u64, u16>,
+    store: BTreeMap<u64, u32>,
     sum: u128,
 }
 
 #[derive(Debug)]
 pub struct MinVal;
 
+#[derive(Debug, Clone)]
+pub struct SimpleHistogram {
+    pub bins: Vec<u64>,
+    pub low: u64,
+    pub high: u64,
+}
+
 impl RecorderBackend for Histogram<u64> {}
 impl RecorderBackend for MinVal {}
 impl RecorderBackend for SaveAllRecorder {}
 impl RecorderBackend for medianheap::MedianHeap<u64> {}
+impl RecorderBackend for SimpleHistogram {}
 
 impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
     type Iter = RecMinValIter;
@@ -127,15 +158,14 @@ impl<'a> Rec<'a> for Recorder<Histogram<u64>> {
         }
         if let Some(cutoff) = self.cutoff {
             if value < cutoff {
+                self.bknd.record(value).map_err(stringify)?;
                 self.counter += 1;
-                self.bknd.record(value).map_err(stringify)
-            } else {
-                Ok(())
             }
         } else {
+            self.bknd.record(value).map_err(stringify)?;
             self.counter += 1;
-            self.bknd.record(value).map_err(stringify)
         }
+        Ok(())
     }
 
     fn log(&self, lvl: Level) {
@@ -319,7 +349,7 @@ impl<'a> Rec<'a> for Recorder<SaveAllRecorder> {
 
     fn nth_lowest_value(&self, nth: u64) -> Option<u64> {
         use std::cmp::max;
-        self.iter().skip((max(1, nth) - 1) as usize).next()
+        self.iter().nth((max(1, nth) - 1) as usize)
     }
 }
 
@@ -371,9 +401,104 @@ impl<'a> Rec<'a> for Recorder<medianheap::MedianHeap<u64>> {
     }
 
     fn aggregated_value(&self) -> Result<u64, String> {
-        self.bknd.median().ok_or(String::from(
-            "aggregated_value called without any recorded values!",
-        ))
+        self.bknd
+            .median()
+            .ok_or_else(|| String::from("aggregated_value called without any recorded values!"))
+    }
+
+    fn percentage_lte(&self, _below: u64) -> f64 {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
+    }
+
+    fn nth_lowest_value(&self, _nth: u64) -> Option<u64> {
+        // we don't need this right now, but should be easy to implement
+        unimplemented!();
+    }
+}
+
+impl<'a> Rec<'a> for Recorder<SimpleHistogram> {
+    type Iter = RecMinValIter;
+
+    fn record(&mut self, value: u64) -> Result<(), String> {
+        if value < self.bknd.low {
+            return Err(format!("{} too low value", value));
+        }
+        if value >= self.bknd.high {
+            return Err(format!("{} too high value", value));
+        }
+        if value < self.min {
+            self.min = value;
+        }
+
+        let bin_size = (self.bknd.high - self.bknd.low) / (self.bknd.bins.len() - 1) as u64;
+
+        let bin = ((value - self.bknd.low) / bin_size) as usize;
+        if let Some(cnt) = self.bknd.bins.get_mut(bin) {
+            *cnt += 1;
+        } else {
+            panic!(
+                "low: {}, high: {}, value: {}, bin_size: {}",
+                self.bknd.low, self.bknd.high, value, bin_size
+            );
+        }
+
+        self.counter += 1;
+
+        Ok(())
+    }
+
+    fn log(&self, lvl: Level) {
+        // print bins from the histogram
+        log!(
+            lvl,
+            "({}) has bin {} values: {:?}",
+            self.name,
+            self.counter,
+            self.bknd.bins
+        );
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn iter(&'a self) -> Self::Iter {
+        unimplemented!();
+    }
+
+    fn len(&self) -> u64 {
+        self.counter
+    }
+
+    fn min(&self) -> Result<u64, String> {
+        if self.counter > 0 {
+            Ok(self.min)
+        } else {
+            Err(String::from("min() called without any recorded values!"))
+        }
+    }
+
+    fn aggregated_value(&self) -> Result<u64, String> {
+        let (maxloc, _) =
+            self.bknd
+                .bins
+                .iter()
+                .enumerate()
+                .fold(
+                    (0, 0u64),
+                    |(loc, max), (i, val)| {
+                        if *val > max {
+                            (i, *val)
+                        } else {
+                            (loc, max)
+                        }
+                    },
+                );
+        let bin_size = (self.bknd.high - self.bknd.low) / self.bknd.bins.len() as u64;
+        let mid = bin_size / 2;
+        let mode = self.bknd.low + bin_size * (maxloc as u64) + mid;
+        Ok(mode)
     }
 
     fn percentage_lte(&self, _below: u64) -> f64 {
@@ -426,7 +551,7 @@ struct RecordTableIterator<I: Iterator<Item = u64>> {
 }
 
 impl<'a, I: Iterator<Item = u64>> RecordTableIterator<I> {
-    pub fn from<R: Rec<'a, Iter = I>>(recorders: &'a Vec<R>) -> RecordTableIterator<I> {
+    pub fn from<R: Rec<'a, Iter = I>>(recorders: &'a [R]) -> RecordTableIterator<I> {
         RecordTableIterator {
             inners: recorders.iter().map(|r| r.iter()).collect(),
         }
@@ -446,7 +571,7 @@ impl<I: Iterator<Item = u64>> Iterator for RecordTableIterator<I> {
     }
 }
 
-pub fn save_to_csv<'a, R: Rec<'a>>(path: &Path, recorders: &'a Vec<R>) -> Result<(), String> {
+pub fn save_to_csv<'a, R: Rec<'a>>(path: &Path, recorders: &'a [R]) -> Result<(), String> {
     let mut wtr = csv::Writer::from_path(path).map_err(stringify)?;
 
     //Write headers
@@ -479,11 +604,11 @@ fn name() {
         vr.push(Recorder::saveall(format!("test {}", i), None));
     }
 
-    for i in 0..3 {
+    (0..3).for_each(|i| {
         for v in 0..3 {
             vr[i].record((v % (i + 1)).try_into().unwrap()).unwrap();
         }
-    }
+    });
     vr[0].record(10).unwrap();
 
     let tableiter = RecordTableIterator::from(&vr);

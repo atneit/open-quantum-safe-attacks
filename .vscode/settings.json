@@ -1,8 +1,8 @@
 {
     "C_Cpp.formatting": "Disabled",
-    "python.pythonPath": "/usr/bin/python3",
+    "python.pythonPath": "scripts/python-virtualenv/bin/python",
     "[python]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": true,
     },
     "cSpell.words": [
         "encaps"
@@ -131,5 +131,37 @@
         "liboqs-rs-bindings/liboqs/**/build/": true,
         "**/target": true,
         "**/run.log": true
-    }
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    "cSpell.enabled": false,
+    "cmake.sourceDirectory": "${workspaceFolder}/liboqs-rs-bindings/liboqs",
+    "python.formatting.autopep8Args": [
+        "--ignore E402"
+    ],
+    "rust-analyzer.diagnostics.enableExperimental": false,
+    "[rust]": {
+        "editor.defaultFormatter": "matklad.rust-analyzer",
+    },
+    "python.formatting.provider": "black",
+    "editor.formatOnSaveMode": "file",
+    "files.associations": {
+        "stdint.h": "c",
+        "vector.h": "c",
+        "parameters.h": "c",
+        "sha2.h": "c",
+        "fips202.h": "c",
+        "kem_bike.h": "c",
+        "kem.h": "c"
+    },
+    "cmake.configureOnOpen": true,
+    "rust-analyzer.checkOnSave.command": "clippy",
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/target/**": true
+    },
+    "jupyter.jupyterServerType": "local",
+    "latex-workshop.latex.build.clearLog.everyRecipeStep.enabled": false,
+    "latex-workshop.latex.recipe.default": "lastUsed",
 }
