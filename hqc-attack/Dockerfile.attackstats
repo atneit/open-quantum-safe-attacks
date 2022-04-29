@@ -1,0 +1,16 @@
+FROM hqc-attack
+
+RUN pacman -Sy rustup --noconfirm
+RUN rustup install stable
+
+ADD collect_attack_stats /collect_attack_stats
+
+WORKDIR /collect_attack_stats
+
+RUN cargo build --release -p gather_data_rayon
+
+RUN mv /hqc/nist-release-2021-06-06/Optimized_Implementation/hqc-128/bin/attack-hybrid .
+
+WORKDIR /collect_attack_stats/results
+
+ENTRYPOINT ../run.sh

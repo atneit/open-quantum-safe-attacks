@@ -1,0 +1,18 @@
+FROM docker.io/archlinux
+
+RUN pacman -Sy texlive-core texlive-latexextra texlive-pictures git sudo fakeroot --noconfirm
+RUN useradd --create-home --shell=/bin/false build && usermod -L build
+RUN echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+WORKDIR /home/build
+USER build
+RUN git clone https://aur.archlinux.org/julia-bin.git
+RUN cd julia-bin && makepkg -si --noconfirm
+USER root
+
+ADD analyses /analyses
+WORKDIR /analyses
+
+RUN julia --project=. -e 'import Pkg; Pkg.instantiate(); Pkg.precompile()'
+
+CMD ./run.sh

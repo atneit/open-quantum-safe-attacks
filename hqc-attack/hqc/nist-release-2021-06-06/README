@@ -1,0 +1,854 @@
++=============================================================================+
+|                                                                             |
+|               ***********************************************               |
+|               *     POST-QUANTUM CRYPTO STANDARDIZATION     *               |
+|               ***********************************************               |
+|                                                                             |
+|=============================================================================|
+|                                                                             |
+|        Proposal: HQC                                                        |
+|        Principal Submitters (by alphabetical order):                        |
+|                  - Carlos AGUILAR MELCHOR                                   |
+|                  - Nicolas ARAGON                                           |
+|                  - Slim BETTAIEB                                            |
+|                  - Loïc BIDOUX                                              |
+|                  - Olivier BLAZY                                            |
+|                  - Jurjen BOS                                               |
+| [backup contact] - Jean-Christophe DENEUVILLE                               |
+|		   - Arnaud DION					      |
+| [main contact]   - Philippe GABORIT                                         |
+|		   - Jérôme LACAN                             		      |
+|                  - Edoardo PERSICHETTI                                      |
+|                  - Jean-Marc ROBERT                                         |
+|                  - Pascal VÉRON                                             |
+|                  - Gilles ZÉMOR                                             |
+|                                                                             |
+|        Inventors: Same as submitters                                        |
+|                                                                             |
+|        Developers: Same as submitters                                       |
+|                                                                             |
+|        Owners: Same as submitters                                           |
+|                                                                             |
++=============================================================================+
+
+This archive is a proposal in response to NIST's call for proposal for standar-
+dization of quantum-resistant public-key cryptographic algorithms.
+
+This version is submitted for the second round of the standardization process.
+
+HQC provides POST-QUANTUM CODE-BASED PUBLIC KEY ENCRYPTION and targets NIST's
+security levels 1, 3, and 5.
+
+This archive is organized as follows:
+
+===============================================================================
+├── Hardware_Implementation
+│   ├── hls
+│   │   ├── optimized
+│   │   │   ├── run_hls.tcl
+│   │   │   ├── set_directives.tcl
+│   │   │   ├── settings.tcl
+│   │   │   └── vhdl
+│   │   │       ├── COMPACT
+│   │   │       │   └── HQC-128
+│   │   │       │       ├── all_functions
+│   │   │       │       │   ├── add_fft_big_W_V.vhd
+│   │   │       │       │   ├── add_fft_bm_pow_R.vhd
+│   │   │       │       │   ├── add_fft_fr_V.vhd
+│   │   │       │       │   ├── add_fft_gammas_suxdS.vhd
+│   │   │       │       │   ├── add_fft_p_A_V.vhd
+│   │   │       │       │   ├── add_fft_perm_r.vhd
+│   │   │       │       │   ├── add_fft.vhd
+│   │   │       │       │   ├── add_fft_w16.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuJfO.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuLf8.vhd
+│   │   │       │       │   ├── crypto_kem_all_fumb6.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuMgi.vhd
+│   │   │       │       │   ├── crypto_kem_all_functions_hls.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuNgs.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuPgM.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuRg6.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuShg.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuThq.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuUhA.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuVhK.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuwdI.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuWhU.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuXh4.vhd
+│   │   │       │       │   ├── crypto_kem_all_fuYie.vhd
+│   │   │       │       │   ├── expand_and_sum.vhd
+│   │   │       │       │   ├── gf_inverse.vhd
+│   │   │       │       │   ├── gf_mul.vhd
+│   │   │       │       │   ├── hadamard_loop.vhd
+│   │   │       │       │   ├── hqc_ciphertext_from_s.vhd
+│   │   │       │       │   ├── hqc_ciphertext_to_st.vhd
+│   │   │       │       │   ├── hqc_public_key_from_1.vhd
+│   │   │       │       │   ├── hqc_public_key_from_s.vhd
+│   │   │       │       │   ├── KeccakF1600_Statebkb.vhd
+│   │   │       │       │   ├── KeccakF1600_Statecud.vhd
+│   │   │       │       │   ├── KeccakF1600_StatedEe.vhd
+│   │   │       │       │   ├── KeccakF1600_StateeOg.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateg8j.vhd
+│   │   │       │       │   ├── KeccakF1600_Statehbi.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateibs.vhd
+│   │   │       │       │   ├── KeccakF1600_StatejbC.vhd
+│   │   │       │       │   ├── KeccakF1600_StatePer.vhd
+│   │   │       │       │   ├── leaves_butterfly_vdy.vhd
+│   │   │       │       │   ├── leaves_butterfly.vhd
+│   │   │       │       │   ├── reed_muller_decode.vhd
+│   │   │       │       │   ├── reed_muller_decodtde.vhd
+│   │   │       │       │   ├── reed_muller_encode.vhd
+│   │   │       │       │   ├── reed_muller_encodqcK.vhd
+│   │   │       │       │   ├── reed_muller_encodrcU.vhd
+│   │   │       │       │   ├── reed_muller_encodsc4.vhd
+│   │   │       │       │   ├── reed_solomon_decoAem.vhd
+│   │   │       │       │   ├── reed_solomon_decoDeQ.vhd
+│   │   │       │       │   ├── reed_solomon_decode.vhd
+│   │   │       │       │   ├── reed_solomon_decoEe0.vhd
+│   │   │       │       │   ├── reed_solomon_decoFfa.vhd
+│   │   │       │       │   ├── reed_solomon_decoHfu.vhd
+│   │   │       │       │   ├── reed_solomon_decoyd2.vhd
+│   │   │       │       │   ├── reed_solomon_decozec.vhd
+│   │   │       │       │   ├── reed_solomon_encode.vhd
+│   │   │       │       │   ├── reed_solomon_encopcA.vhd
+│   │   │       │       │   ├── seedexpander_init.vhd
+│   │   │       │       │   ├── seedexpander_mult_ty.vhd
+│   │   │       │       │   ├── shake256_512_ds_socq.vhd
+│   │   │       │       │   ├── shake256_512_ds.vhd
+│   │   │       │       │   ├── shake_prng_init_tkbM.vhd
+│   │   │       │       │   ├── shake_prng_init.vhd
+│   │   │       │       │   ├── shake_prng.vhd
+│   │   │       │       │   ├── vect_add.vhd
+│   │   │       │       │   ├── vect_compare_64.vhd
+│   │   │       │       │   ├── vect_compare.vhd
+│   │   │       │       │   ├── vect_copyresize_1.vhd
+│   │   │       │       │   ├── vect_copyresize_2.vhd
+│   │   │       │       │   ├── vect_copyresize_mult.vhd
+│   │   │       │       │   ├── vect_copyresize.vhd
+│   │   │       │       │   ├── vect_mul_add_res_ncg.vhd
+│   │   │       │       │   ├── vect_mul_add.vhd
+│   │   │       │       │   ├── vector_init_64.vhd
+│   │   │       │       │   ├── vect_set_random_fixe_1.vhd
+│   │   │       │       │   ├── vect_set_random_fixe.vhd
+│   │   │       │       │   └── vect_set_random_flbW.vhd
+│   │   │       │       ├── dec
+│   │   │       │       │   ├── add_fft_big_W_V.vhd
+│   │   │       │       │   ├── add_fft_bm_pow_R.vhd
+│   │   │       │       │   ├── add_fft_fr_V.vhd
+│   │   │       │       │   ├── add_fft_gammas_surcU.vhd
+│   │   │       │       │   ├── add_fft_p_A_V.vhd
+│   │   │       │       │   ├── add_fft_perm_r.vhd
+│   │   │       │       │   ├── add_fft.vhd
+│   │   │       │       │   ├── add_fft_w16.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlHfu.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlIfE.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlKfY.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hllbW.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlLf8.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlMgi.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlNgs.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlOgC.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlqcK.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlQgW.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlRg6.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlShg.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hls.vhd
+│   │   │       │       │   ├── crypto_kem_dec_hlUhA.vhd
+│   │   │       │       │   ├── expand_and_sum.vhd
+│   │   │       │       │   ├── gf_inverse.vhd
+│   │   │       │       │   ├── gf_mul.vhd
+│   │   │       │       │   ├── hadamard_loop.vhd
+│   │   │       │       │   ├── hqc_ciphertext_from_s.vhd
+│   │   │       │       │   ├── hqc_public_key_from_s.vhd
+│   │   │       │       │   ├── KeccakF1600_Statebkb.vhd
+│   │   │       │       │   ├── KeccakF1600_Statecud.vhd
+│   │   │       │       │   ├── KeccakF1600_StatedEe.vhd
+│   │   │       │       │   ├── KeccakF1600_StateeOg.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateg8j.vhd
+│   │   │       │       │   ├── KeccakF1600_Statehbi.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateibs.vhd
+│   │   │       │       │   ├── KeccakF1600_StatejbC.vhd
+│   │   │       │       │   ├── KeccakF1600_StatePer.vhd
+│   │   │       │       │   ├── leaves_butterfly_pcA.vhd
+│   │   │       │       │   ├── leaves_butterfly.vhd
+│   │   │       │       │   ├── reed_muller_decode.vhd
+│   │   │       │       │   ├── reed_muller_decodncg.vhd
+│   │   │       │       │   ├── reed_muller_encodEe0.vhd
+│   │   │       │       │   ├── reed_muller_encode.vhd
+│   │   │       │       │   ├── reed_muller_encodFfa.vhd
+│   │   │       │       │   ├── reed_muller_encodGfk.vhd
+│   │   │       │       │   ├── reed_solomon_decoBew.vhd
+│   │   │       │       │   ├── reed_solomon_decode.vhd
+│   │   │       │       │   ├── reed_solomon_decosc4.vhd
+│   │   │       │       │   ├── reed_solomon_decotde.vhd
+│   │   │       │       │   ├── reed_solomon_decoudo.vhd
+│   │   │       │       │   ├── reed_solomon_decoxdS.vhd
+│   │   │       │       │   ├── reed_solomon_decoyd2.vhd
+│   │   │       │       │   ├── reed_solomon_decozec.vhd
+│   │   │       │       │   ├── reed_solomon_encoDeQ.vhd
+│   │   │       │       │   ├── reed_solomon_encode.vhd
+│   │   │       │       │   ├── seedexpander_init.vhd
+│   │   │       │       │   ├── seedexpander_mult_ty.vhd
+│   │   │       │       │   ├── shake256_512_ds_sCeG.vhd
+│   │   │       │       │   ├── shake256_512_ds.vhd
+│   │   │       │       │   ├── vect_add.vhd
+│   │   │       │       │   ├── vect_compare_64.vhd
+│   │   │       │       │   ├── vect_compare.vhd
+│   │   │       │       │   ├── vect_copyresize_1.vhd
+│   │   │       │       │   ├── vect_copyresize_2.vhd
+│   │   │       │       │   ├── vect_copyresize_mult.vhd
+│   │   │       │       │   ├── vect_copyresize.vhd
+│   │   │       │       │   ├── vect_mul_add_res_mb6.vhd
+│   │   │       │       │   ├── vect_mul_add.vhd
+│   │   │       │       │   ├── vect_set_random_fixe_1.vhd
+│   │   │       │       │   ├── vect_set_random_fixe.vhd
+│   │   │       │       │   └── vect_set_random_fkbM.vhd
+│   │   │       │       ├── enc
+│   │   │       │       │   ├── crypto_kem_enc_hlBew.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlCeG.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlDeQ.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlFfa.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlncg.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hls.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hltde.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hludo.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlwdI.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlxdS.vhd
+│   │   │       │       │   ├── crypto_kem_enc_hlzec.vhd
+│   │   │       │       │   ├── gf_mul.vhd
+│   │   │       │       │   ├── hqc_ciphertext_to_st.vhd
+│   │   │       │       │   ├── hqc_public_key_from_s.vhd
+│   │   │       │       │   ├── KeccakF1600_Statebkb.vhd
+│   │   │       │       │   ├── KeccakF1600_Statecud.vhd
+│   │   │       │       │   ├── KeccakF1600_StatedEe.vhd
+│   │   │       │       │   ├── KeccakF1600_StateeOg.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateg8j.vhd
+│   │   │       │       │   ├── KeccakF1600_Statehbi.vhd
+│   │   │       │       │   ├── KeccakF1600_Stateibs.vhd
+│   │   │       │       │   ├── KeccakF1600_StatejbC.vhd
+│   │   │       │       │   ├── KeccakF1600_StatePer.vhd
+│   │   │       │       │   ├── reed_muller_encode.vhd
+│   │   │       │       │   ├── reed_muller_encodqcK.vhd
+│   │   │       │       │   ├── reed_muller_encodrcU.vhd
+│   │   │       │       │   ├── reed_muller_encodsc4.vhd
+│   │   │       │       │   ├── reed_solomon_encode.vhd
+│   │   │       │       │   ├── reed_solomon_encopcA.vhd
+│   │   │       │       │   ├── seedexpander_init.vhd
+│   │   │       │       │   ├── seedexpander_mult_ty.vhd
+│   │   │       │       │   ├── shake256_512_ds_slbW.vhd
+│   │   │       │       │   ├── shake256_512_ds.vhd
+│   │   │       │       │   ├── shake_prng_init_tkbM.vhd
+│   │   │       │       │   ├── shake_prng_init.vhd
+│   │   │       │       │   ├── shake_prng.vhd
+│   │   │       │       │   ├── vect_add.vhd
+│   │   │       │       │   ├── vect_copyresize_1.vhd
+│   │   │       │       │   ├── vect_copyresize.vhd
+│   │   │       │       │   ├── vect_mul_add_res_ocq.vhd
+│   │   │       │       │   ├── vect_mul_add.vhd
+│   │   │       │       │   ├── vector_init_64.vhd
+│   │   │       │       │   ├── vect_set_random_fixe_1.vhd
+│   │   │       │       │   ├── vect_set_random_fixe.vhd
+│   │   │       │       │   └── vect_set_random_fmb6.vhd
+│   │   │       │       └── keypair
+│   │   │       │           ├── crypto_kem_keypaimb6.vhd
+│   │   │       │           ├── crypto_kem_keypaiocq.vhd
+│   │   │       │           ├── crypto_kem_keypaiqcK.vhd
+│   │   │       │           ├── crypto_kem_keypair_hls.vhd
+│   │   │       │           ├── crypto_kem_keypaisc4.vhd
+│   │   │       │           ├── crypto_kem_keypaitde.vhd
+│   │   │       │           ├── crypto_kem_keypaivdy.vhd
+│   │   │       │           ├── KeccakF1600_Statebkb.vhd
+│   │   │       │           ├── KeccakF1600_Statecud.vhd
+│   │   │       │           ├── KeccakF1600_StatedEe.vhd
+│   │   │       │           ├── KeccakF1600_StateeOg.vhd
+│   │   │       │           ├── KeccakF1600_Stateg8j.vhd
+│   │   │       │           ├── KeccakF1600_Statehbi.vhd
+│   │   │       │           ├── KeccakF1600_Stateibs.vhd
+│   │   │       │           ├── KeccakF1600_StatejbC.vhd
+│   │   │       │           ├── KeccakF1600_StatePer.vhd
+│   │   │       │           ├── seedexpander_init.vhd
+│   │   │       │           ├── seedexpander_mult_ty.vhd
+│   │   │       │           ├── shake_prng_init_tkbM.vhd
+│   │   │       │           ├── shake_prng_init.vhd
+│   │   │       │           ├── shake_prng.vhd
+│   │   │       │           ├── vect_mul_add_res_ncg.vhd
+│   │   │       │           ├── vect_mul_add.vhd
+│   │   │       │           ├── vector_init_64.vhd
+│   │   │       │           ├── vect_set_random_fixe_1.vhd
+│   │   │       │           ├── vect_set_random_fixe.vhd
+│   │   │       │           └── vect_set_random_flbW.vhd
+│   │   │       └── PERF
+│   │   │           └── HQC-128
+│   │   │               ├── all_functions
+│   │   │               │   ├── add_fft_big_W_V.vhd
+│   │   │               │   ├── add_fft_bm_pow_R.vhd
+│   │   │               │   ├── add_fft_fr_V.vhd
+│   │   │               │   ├── add_fft_gammas_suxdS.vhd
+│   │   │               │   ├── add_fft_p_A_V.vhd
+│   │   │               │   ├── add_fft_perm_r.vhd
+│   │   │               │   ├── add_fft.vhd
+│   │   │               │   ├── add_fft_w16.vhd
+│   │   │               │   ├── crypto_kem_all_fucud.vhd
+│   │   │               │   ├── crypto_kem_all_fufYi.vhd
+│   │   │               │   ├── crypto_kem_all_fuJfO.vhd
+│   │   │               │   ├── crypto_kem_all_fuLf8.vhd
+│   │   │               │   ├── crypto_kem_all_fuMgi.vhd
+│   │   │               │   ├── crypto_kem_all_functions_hls.vhd
+│   │   │               │   ├── crypto_kem_all_fuNgs.vhd
+│   │   │               │   ├── crypto_kem_all_fuQgW.vhd
+│   │   │               │   ├── crypto_kem_all_fuRg6.vhd
+│   │   │               │   ├── crypto_kem_all_fuShg.vhd
+│   │   │               │   ├── crypto_kem_all_fuThq.vhd
+│   │   │               │   ├── crypto_kem_all_fuUhA.vhd
+│   │   │               │   ├── crypto_kem_all_fuwdI.vhd
+│   │   │               │   ├── crypto_kem_all_fuWhU.vhd
+│   │   │               │   ├── crypto_kem_all_fuXh4.vhd
+│   │   │               │   ├── crypto_kem_all_fuYie.vhd
+│   │   │               │   ├── crypto_kem_all_fuZio.vhd
+│   │   │               │   ├── expand_and_sum.vhd
+│   │   │               │   ├── gf_inverse.vhd
+│   │   │               │   ├── gf_mul.vhd
+│   │   │               │   ├── gf_square.vhd
+│   │   │               │   ├── hadamard_loop_1.vhd
+│   │   │               │   ├── hadamard_loop.vhd
+│   │   │               │   ├── hqc_ciphertext_from_s.vhd
+│   │   │               │   ├── hqc_ciphertext_to_st.vhd
+│   │   │               │   ├── hqc_public_key_from_1.vhd
+│   │   │               │   ├── hqc_public_key_from_s.vhd
+│   │   │               │   ├── KeccakF1600_Statebkb.vhd
+│   │   │               │   ├── KeccakF1600_StatePer.vhd
+│   │   │               │   ├── leaves_butterfly_vdy.vhd
+│   │   │               │   ├── leaves_butterfly.vhd
+│   │   │               │   ├── reduce_naive_add.vhd
+│   │   │               │   ├── reed_muller_decode.vhd
+│   │   │               │   ├── reed_muller_decodmb6.vhd
+│   │   │               │   ├── reed_muller_decodudo.vhd
+│   │   │               │   ├── reed_muller_encode.vhd
+│   │   │               │   ├── reed_muller_encodjbC.vhd
+│   │   │               │   ├── reed_muller_encodkbM.vhd
+│   │   │               │   ├── reed_muller_encodlbW.vhd
+│   │   │               │   ├── reed_solomon_decoAem.vhd
+│   │   │               │   ├── reed_solomon_decoDeQ.vhd
+│   │   │               │   ├── reed_solomon_decode.vhd
+│   │   │               │   ├── reed_solomon_decoEe0.vhd
+│   │   │               │   ├── reed_solomon_decoFfa.vhd
+│   │   │               │   ├── reed_solomon_decoyd2.vhd
+│   │   │               │   ├── reed_solomon_decozec.vhd
+│   │   │               │   ├── reed_solomon_encode.vhd
+│   │   │               │   ├── seedexpander_init.vhd
+│   │   │               │   ├── seedexpander_mult_ty.vhd
+│   │   │               │   ├── shake256_512_ds_sibs.vhd
+│   │   │               │   ├── shake256_512_ds.vhd
+│   │   │               │   ├── shake_prng_init_tdEe.vhd
+│   │   │               │   ├── shake_prng_init.vhd
+│   │   │               │   ├── shake_prng.vhd
+│   │   │               │   ├── vect_add.vhd
+│   │   │               │   ├── vect_compare_64.vhd
+│   │   │               │   ├── vect_compare.vhd
+│   │   │               │   ├── vect_copyresize_1.vhd
+│   │   │               │   ├── vect_copyresize_2.vhd
+│   │   │               │   ├── vect_copyresize_mult.vhd
+│   │   │               │   ├── vect_copyresize.vhd
+│   │   │               │   ├── vect_mul_add_a2_lg8j.vhd
+│   │   │               │   ├── vect_mul_add_res_hbi.vhd
+│   │   │               │   ├── vect_mul_add.vhd
+│   │   │               │   ├── vector_init_1_1.vhd
+│   │   │               │   ├── vector_init_1.vhd
+│   │   │               │   ├── vector_init_2.vhd
+│   │   │               │   ├── vector_init_3.vhd
+│   │   │               │   ├── vector_init_64.vhd
+│   │   │               │   ├── vector_init.vhd
+│   │   │               │   ├── vect_set_random_feOg.vhd
+│   │   │               │   ├── vect_set_random_fixe_1.vhd
+│   │   │               │   └── vect_set_random_fixe.vhd
+│   │   │               ├── dec
+│   │   │               │   ├── add_fft_big_W_V.vhd
+│   │   │               │   ├── add_fft_bm_pow_R.vhd
+│   │   │               │   ├── add_fft_fr_V.vhd
+│   │   │               │   ├── add_fft_gammas_susc4.vhd
+│   │   │               │   ├── add_fft_p_A_V.vhd
+│   │   │               │   ├── add_fft_perm_r.vhd
+│   │   │               │   ├── add_fft.vhd
+│   │   │               │   ├── add_fft_w16.vhd
+│   │   │               │   ├── crypto_kem_dec_hlcud.vhd
+│   │   │               │   ├── crypto_kem_dec_hleOg.vhd
+│   │   │               │   ├── crypto_kem_dec_hlHfu.vhd
+│   │   │               │   ├── crypto_kem_dec_hlIfE.vhd
+│   │   │               │   ├── crypto_kem_dec_hlJfO.vhd
+│   │   │               │   ├── crypto_kem_dec_hlKfY.vhd
+│   │   │               │   ├── crypto_kem_dec_hlLf8.vhd
+│   │   │               │   ├── crypto_kem_dec_hlMgi.vhd
+│   │   │               │   ├── crypto_kem_dec_hlOgC.vhd
+│   │   │               │   ├── crypto_kem_dec_hlPgM.vhd
+│   │   │               │   ├── crypto_kem_dec_hlQgW.vhd
+│   │   │               │   ├── crypto_kem_dec_hlrcU.vhd
+│   │   │               │   ├── crypto_kem_dec_hlRg6.vhd
+│   │   │               │   ├── crypto_kem_dec_hlShg.vhd
+│   │   │               │   ├── crypto_kem_dec_hls.vhd
+│   │   │               │   ├── crypto_kem_dec_hlUhA.vhd
+│   │   │               │   ├── expand_and_sum.vhd
+│   │   │               │   ├── gf_inverse.vhd
+│   │   │               │   ├── gf_mul.vhd
+│   │   │               │   ├── gf_square.vhd
+│   │   │               │   ├── hadamard_loop_1.vhd
+│   │   │               │   ├── hadamard_loop.vhd
+│   │   │               │   ├── hqc_ciphertext_from_s.vhd
+│   │   │               │   ├── hqc_public_key_from_s.vhd
+│   │   │               │   ├── KeccakF1600_Statebkb.vhd
+│   │   │               │   ├── KeccakF1600_StatePer.vhd
+│   │   │               │   ├── leaves_butterfly_qcK.vhd
+│   │   │               │   ├── leaves_butterfly.vhd
+│   │   │               │   ├── reduce_naive_add.vhd
+│   │   │               │   ├── reed_muller_decode.vhd
+│   │   │               │   ├── reed_muller_decodhbi.vhd
+│   │   │               │   ├── reed_muller_decodpcA.vhd
+│   │   │               │   ├── reed_muller_encodEe0.vhd
+│   │   │               │   ├── reed_muller_encode.vhd
+│   │   │               │   ├── reed_muller_encodFfa.vhd
+│   │   │               │   ├── reed_muller_encodGfk.vhd
+│   │   │               │   ├── reed_solomon_decoAem.vhd
+│   │   │               │   ├── reed_solomon_decode.vhd
+│   │   │               │   ├── reed_solomon_decotde.vhd
+│   │   │               │   ├── reed_solomon_decoudo.vhd
+│   │   │               │   ├── reed_solomon_decovdy.vhd
+│   │   │               │   ├── reed_solomon_decoyd2.vhd
+│   │   │               │   ├── reed_solomon_decozec.vhd
+│   │   │               │   ├── reed_solomon_encode.vhd
+│   │   │               │   ├── seedexpander_init.vhd
+│   │   │               │   ├── seedexpander_mult_ty.vhd
+│   │   │               │   ├── shake256_512_ds_sDeQ.vhd
+│   │   │               │   ├── shake256_512_ds.vhd
+│   │   │               │   ├── vect_add.vhd
+│   │   │               │   ├── vect_compare_64.vhd
+│   │   │               │   ├── vect_compare.vhd
+│   │   │               │   ├── vect_copyresize_1.vhd
+│   │   │               │   ├── vect_copyresize_2.vhd
+│   │   │               │   ├── vect_copyresize_mult.vhd
+│   │   │               │   ├── vect_copyresize.vhd
+│   │   │               │   ├── vect_mul_add_a2_lfYi.vhd
+│   │   │               │   ├── vect_mul_add_res_g8j.vhd
+│   │   │               │   ├── vect_mul_add.vhd
+│   │   │               │   ├── vector_init_11.vhd
+│   │   │               │   ├── vector_init_1.vhd
+│   │   │               │   ├── vector_init_2.vhd
+│   │   │               │   ├── vector_init_3.vhd
+│   │   │               │   ├── vector_init.vhd
+│   │   │               │   ├── vect_set_random_fdEe.vhd
+│   │   │               │   ├── vect_set_random_fixe_1.vhd
+│   │   │               │   └── vect_set_random_fixe.vhd
+│   │   │               ├── enc
+│   │   │               │   ├── crypto_kem_enc_hlcud.vhd
+│   │   │               │   ├── crypto_kem_enc_hlg8j.vhd
+│   │   │               │   ├── crypto_kem_enc_hlmb6.vhd
+│   │   │               │   ├── crypto_kem_enc_hlncg.vhd
+│   │   │               │   ├── crypto_kem_enc_hlpcA.vhd
+│   │   │               │   ├── crypto_kem_enc_hlqcK.vhd
+│   │   │               │   ├── crypto_kem_enc_hlsc4.vhd
+│   │   │               │   ├── crypto_kem_enc_hls.vhd
+│   │   │               │   ├── crypto_kem_enc_hltde.vhd
+│   │   │               │   ├── crypto_kem_enc_hludo.vhd
+│   │   │               │   ├── crypto_kem_enc_hlvdy.vhd
+│   │   │               │   ├── crypto_kem_enc_hlwdI.vhd
+│   │   │               │   ├── crypto_kem_enc_hlyd2.vhd
+│   │   │               │   ├── gf_mul.vhd
+│   │   │               │   ├── hqc_ciphertext_to_st.vhd
+│   │   │               │   ├── hqc_public_key_from_s.vhd
+│   │   │               │   ├── KeccakF1600_Statebkb.vhd
+│   │   │               │   ├── KeccakF1600_StatePer.vhd
+│   │   │               │   ├── reduce_naive_add.vhd
+│   │   │               │   ├── reed_muller_encode.vhd
+│   │   │               │   ├── reed_muller_encodjbC.vhd
+│   │   │               │   ├── reed_muller_encodkbM.vhd
+│   │   │               │   ├── reed_muller_encodlbW.vhd
+│   │   │               │   ├── reed_solomon_encode.vhd
+│   │   │               │   ├── seedexpander_init.vhd
+│   │   │               │   ├── seedexpander_mult_ty.vhd
+│   │   │               │   ├── shake256_512_ds_seOg.vhd
+│   │   │               │   ├── shake256_512_ds.vhd
+│   │   │               │   ├── shake_prng_init_tdEe.vhd
+│   │   │               │   ├── shake_prng_init.vhd
+│   │   │               │   ├── shake_prng.vhd
+│   │   │               │   ├── vect_add.vhd
+│   │   │               │   ├── vect_copyresize_1.vhd
+│   │   │               │   ├── vect_copyresize.vhd
+│   │   │               │   ├── vect_mul_add_a2_lhbi.vhd
+│   │   │               │   ├── vect_mul_add_res_ibs.vhd
+│   │   │               │   ├── vect_mul_add.vhd
+│   │   │               │   ├── vector_init_64.vhd
+│   │   │               │   ├── vector_init.vhd
+│   │   │               │   ├── vect_set_random_ffYi.vhd
+│   │   │               │   ├── vect_set_random_fixe_1.vhd
+│   │   │               │   └── vect_set_random_fixe.vhd
+│   │   │               └── keypair
+│   │   │                   ├── crypto_kem_keypaicud.vhd
+│   │   │                   ├── crypto_kem_keypaifYi.vhd
+│   │   │                   ├── crypto_kem_keypaiibs.vhd
+│   │   │                   ├── crypto_kem_keypaikbM.vhd
+│   │   │                   ├── crypto_kem_keypailbW.vhd
+│   │   │                   ├── crypto_kem_keypaimb6.vhd
+│   │   │                   ├── crypto_kem_keypaincg.vhd
+│   │   │                   ├── crypto_kem_keypaipcA.vhd
+│   │   │                   ├── crypto_kem_keypair_hls.vhd
+│   │   │                   ├── KeccakF1600_Statebkb.vhd
+│   │   │                   ├── KeccakF1600_StatePer.vhd
+│   │   │                   ├── reduce_naive_add.vhd
+│   │   │                   ├── seedexpander_init.vhd
+│   │   │                   ├── seedexpander_mult_ty.vhd
+│   │   │                   ├── shake_prng_init_tdEe.vhd
+│   │   │                   ├── shake_prng_init.vhd
+│   │   │                   ├── shake_prng.vhd
+│   │   │                   ├── vect_mul_add_a2_lg8j.vhd
+│   │   │                   ├── vect_mul_add_res_hbi.vhd
+│   │   │                   ├── vect_mul_add.vhd
+│   │   │                   ├── vector_init_64.vhd
+│   │   │                   ├── vector_init.vhd
+│   │   │                   ├── vect_set_random_feOg.vhd
+│   │   │                   ├── vect_set_random_fixe_1.vhd
+│   │   │                   └── vect_set_random_fixe.vhd
+│   │   ├── pure-hls
+│   │   │   ├── run_hls.tcl
+│   │   │   ├── set_directives.tcl
+│   │   │   └── settings.tcl
+│   │   └── README.md
+│   ├── Makefile
+│   ├── README.md
+│   ├── ref_value
+│   │   ├── hqc-128 -> ../../HQC/schemes/hqc_ref/hqc-128
+│   │   ├── Makefile
+│   │   └── src
+│   │       └── gen_tb_data.c
+│   ├── src
+│   │   ├── api.cpp
+│   │   ├── api.h
+│   │   ├── code.cpp
+│   │   ├── code.h
+│   │   ├── domains.h
+│   │   ├── gf2x.cpp
+│   │   ├── gf2x.h
+│   │   ├── gf.cpp
+│   │   ├── gf.h
+│   │   ├── hls_fft_add.cpp
+│   │   ├── hls_fft_add.h
+│   │   ├── hqc.cpp
+│   │   ├── hqc.h
+│   │   ├── Keccak_Defines.h
+│   │   ├── KeccakF1600_StatePermute.cpp
+│   │   ├── KeccakF1600_StatePermute.h
+│   │   ├── Keccak_Squeezeblocks.cpp
+│   │   ├── Keccak_Squeezeblocks.h
+│   │   ├── Keccak_Stream_Absorb.cpp
+│   │   ├── Keccak_Stream_Absorb.h
+│   │   ├── kem.cpp
+│   │   ├── kem.h
+│   │   ├── kem_typedef.h
+│   │   ├── parameters.h
+│   │   ├── parsing.cpp
+│   │   ├── parsing.h
+│   │   ├── reed_muller.cpp
+│   │   ├── reed_muller.h
+│   │   ├── reed_solomon.cpp
+│   │   ├── reed_solomon.h
+│   │   ├── shake_ds.cpp
+│   │   ├── shake_ds.h
+│   │   ├── shake_prng.cpp
+│   │   ├── shake_prng.h
+│   │   ├── vector.cpp
+│   │   └── vector.h
+│   └── tests
+│       ├── kem
+│       │   ├── src
+│       │   │   ├── tb_crypto_kem_all_functions.cpp
+│       │   │   ├── tb_crypto_kem_dec.cpp
+│       │   │   ├── tb_crypto_kem_enc.cpp
+│       │   │   └── tb_crypto_kem_keypair.cpp
+│       │   └── src_vhd
+│       │       └── settings.tcl
+│       ├── prng
+│       │   ├── doc
+│       │   │   ├── init_and_expand_compare_report.html
+│       │   │   ├── randombytes_2_compare_report.html
+│       │   │   └── randombytes_compare_report.html
+│       │   ├── hls
+│       │   │   ├── gen_proj.xml
+│       │   │   └── hls.py
+│       │   └── src
+│       │       ├── tb_prng.cpp
+│       │       └── tb_seedexpander.cpp
+│       └── tb_generic
+│           └── src
+│               └── tb_generic.cpp
+├── KATs
+│   ├── Optimized_Implementation
+│   │   ├── hqc-128
+│   │   │   ├── hqc-128_intermediates_values
+│   │   │   ├── hqc-128_kat.req
+│   │   │   └── hqc-128_kat.rsp
+│   │   ├── hqc-192
+│   │   │   ├── hqc-192_intermediates_values
+│   │   │   ├── hqc-192_kat.req
+│   │   │   └── hqc-192_kat.rsp
+│   │   └── hqc-256
+│   │       ├── hqc-256_intermediates_values
+│   │       ├── hqc-256_kat.req
+│   │       └── hqc-256_kat.rsp
+│   └── Reference_Implementation
+│       ├── hqc-128
+│       │   ├── hqc-128_intermediates_values
+│       │   ├── hqc-128_kat.req
+│       │   └── hqc-128_kat.rsp
+│       ├── hqc-192
+│       │   ├── hqc-192_intermediates_values
+│       │   ├── hqc-192_kat.req
+│       │   └── hqc-192_kat.rsp
+│       └── hqc-256
+│           ├── hqc-256_intermediates_values
+│           ├── hqc-256_kat.req
+│           └── hqc-256_kat.rsp
+├── Optimized_Implementation
+│   ├── hqc-128
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   ├── hqc-192
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   ├── hqc-256
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   └── README
+├── README
+├── Reference_Implementation
+│   ├── hqc-128
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   ├── hqc-192
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   ├── hqc-256
+│   │   ├── doc
+│   │   │   ├── biblio.bib
+│   │   │   └── main_page.txt
+│   │   ├── doxygen.conf
+│   │   ├── lib
+│   │   │   └── fips202
+│   │   │       ├── fips202.c
+│   │   │       └── fips202.h
+│   │   ├── Makefile
+│   │   └── src
+│   │       ├── api.h
+│   │       ├── code.c
+│   │       ├── code.h
+│   │       ├── domains.h
+│   │       ├── fft.c
+│   │       ├── fft.h
+│   │       ├── gf2x.c
+│   │       ├── gf2x.h
+│   │       ├── gf.c
+│   │       ├── gf.h
+│   │       ├── hqc.c
+│   │       ├── hqc.h
+│   │       ├── kem.c
+│   │       ├── LICENSE
+│   │       ├── main_hqc.c
+│   │       ├── main_kat.c
+│   │       ├── parameters.h
+│   │       ├── parsing.c
+│   │       ├── parsing.h
+│   │       ├── reed_muller.c
+│   │       ├── reed_muller.h
+│   │       ├── reed_solomon.c
+│   │       ├── reed_solomon.h
+│   │       ├── shake_ds.c
+│   │       ├── shake_ds.h
+│   │       ├── shake_prng.c
+│   │       ├── shake_prng.h
+│   │       ├── vector.c
+│   │       └── vector.h
+│   └── README
+└── Supporting_Documentation
+    └── HQC_Submission.pdf
+

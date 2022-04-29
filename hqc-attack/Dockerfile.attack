@@ -1,0 +1,10 @@
+FROM docker.io/archlinux
+
+RUN pacman -Sy base-devel --noconfirm
+
+ADD hqc /hqc
+WORKDIR /hqc/nist-release-2021-06-06/Optimized_Implementation/hqc-128
+
+RUN make attack-hybrid
+
+CMD ./bin/attack-hybrid

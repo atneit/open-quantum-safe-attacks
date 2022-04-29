@@ -1,0 +1,3 @@
+FROM hqc-attack
+
+CMD ./collect_timings.sh
