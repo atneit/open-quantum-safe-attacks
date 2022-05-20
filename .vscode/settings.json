@@ -140,7 +140,6 @@
     "python.formatting.autopep8Args": [
         "--ignore E402"
     ],
-    "rust-analyzer.diagnostics.enableExperimental": false,
     "[rust]": {
         "editor.defaultFormatter": "matklad.rust-analyzer",
     },
@@ -164,4 +163,5 @@
     "jupyter.jupyterServerType": "local",
     "latex-workshop.latex.build.clearLog.everyRecipeStep.enabled": false,
     "latex-workshop.latex.recipe.default": "lastUsed",
+    "rust-analyzer.diagnostics.experimental.enable": false,
 }
