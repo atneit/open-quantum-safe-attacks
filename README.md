@@ -6,7 +6,7 @@ Proof-Of-Concept attacks against `liboqs` (Open Quantum Safe).
 
 * FrodoKEM memcmp timing attack. [Paper here](https://eprint.iacr.org/2020/743)
 * Rejection Sampling timing attack on BIKE [Paper here](https://eprint.iacr.org/2021/1485)
-  * Attack on HQC implemented here: [TODO]()
+  * Attack on HQC implemented [separately here](https://github.com/hqc-attack/hqc-attack)
 
 ## Get the source
 
