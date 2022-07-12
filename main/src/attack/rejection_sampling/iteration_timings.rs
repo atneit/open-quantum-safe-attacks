@@ -97,7 +97,8 @@ pub fn run<KEM: KemWithRejectionSampling + std::marker::Send + std::marker::Sync
                 opt.measurments, count, iter
             );
 
-            let reused = opt.measurments.div_ceil(count);
+            // div_ceil when it hits stable
+            let reused = (opt.measurments + count - 1)/ count;
             if reused > 1 {
                 warn!("Plaintexts will be reused up to {} times each", reused);
             }

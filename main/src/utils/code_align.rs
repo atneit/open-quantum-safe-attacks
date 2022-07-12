@@ -1,5 +1,7 @@
 macro_rules! memshift {
-    () => {{
+    () => {
+        #[cfg(feature = "code-alignment")]
+        {
         use std::hint::black_box;
         let x = black_box(0);
         let x = black_box(x + 1);
