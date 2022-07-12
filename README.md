@@ -25,17 +25,9 @@ You need  `git clone --recursive <url>` in order to also get the submodules.
 
 ## How to compile the program  (Linux)
 
-You need nightly version of `rust` installed, if you haven't already, here's how:
+You need `rust` installed, if you haven't already, here's how:
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-To install the nighly version of the compiler run the following command:
-
-    rustup toolchain install nightly
-
-To make the nightly version the default for the current directory simply run:
-
-    rustup override set nightly
     
 Then it is a simple matter to finally build the program with
 

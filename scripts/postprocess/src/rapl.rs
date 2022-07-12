@@ -591,7 +591,8 @@ impl TraceRouter {
             &trace,
             DataSet::choose(self.weight_train, self.weight_test, self.weight_validate),
         );
-        match workers.get(&dest) {
+        let worker_res = workers.get(&dest);
+        match worker_res {
             Some(worker) => {
                 worker.send(trace)?;
             }
@@ -612,7 +613,9 @@ impl TraceRouter {
     fn stop(&mut self) -> Result<Vec<WorkerResult>> {
         let mut results = Vec::new();
 
-        for (_, worker) in self.write_workers.write().unwrap().drain() {
+        let mut lock = self.write_workers.write().unwrap();
+        let drain_it = lock.drain();
+        for (_, worker) in drain_it {
             drop(worker.sender);
             let result = match worker.join_handle.join() {
                 Ok(result) => result,

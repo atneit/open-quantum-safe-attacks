@@ -27,10 +27,11 @@ pub fn run<BIKE: 'static + Bike + std::marker::Send>(
 ) -> Result<(), String> {
     let (_, mut sk) = read_keypair::<BIKE>(&opt.key_file, false)?;
     let params = BIKE::params::<usize>();
-    let max_distance = params.PARAM_R.div_ceil(2);
+    let max_distance = (params.PARAM_R + 1 )/ 2; // div_ceil
     let mut distances = vec![0; max_distance + 1];
-    let sk_offset = params.PARAM_SK_OFFSET + params.PARAM_R.div_ceil(8); // first or second parity check matrix
-    let sk_len = params.PARAM_R.div_ceil(8);
+    let r_bytes = (params.PARAM_R + 7 )/ 8; // div_ceil
+    let sk_offset = params.PARAM_SK_OFFSET + r_bytes; // first or second parity check matrix
+    let sk_len = r_bytes;
     let range = sk_offset..sk_offset + sk_len;
 
     let sk_bytes = &mut sk.as_mut_slice()[range];
