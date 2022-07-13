@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This script must be running from repository root"
+
 LEN=100000
 HW=${1:-149}
 EPSILON=0.01

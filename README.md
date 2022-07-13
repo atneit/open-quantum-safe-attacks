@@ -48,13 +48,17 @@ e.g.
 
 Of course, if you wish it is also possible to run the binary directly after building: `target/release/oqs-afw --help` or `target/debug/oqs-afw --help`
 
-### Usage instructions
+## 7. Usage instructions
 
-Please see [USAGE.md](USAGE.md)
+This program is comprised of many different subprogram designed to aid in the development and research of new side-channel attacks against the `liboqs` library.
 
-## (Saved data)
+Most of these commands are of no use for new users but simply remain as a collection of routines that might or might not be usefull in any future endeavors.
 
-In this repo several data files are also stored. These are compressed to save space and download time 
-and they are located in the `data/compressed` folder.
+The **actually usefull** commands, for new users are documented in the following files:
 
-If you wish to analyze them with the scripts in the `scripts` folder you must uncompress them first (preferably in the `data/` folder).
+1. Paper: "A key-recovery timing attack on post-quantum primitives using the Fujisaki-Okamoto transformation and its application on FrodoKEM"
+    * Not implemented.
+2. Paper: "Don't Reject This: Key-Recovery Timing Attacks Due to Rejection-Sampling in HQC and BIKE"
+    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb)
+
+
