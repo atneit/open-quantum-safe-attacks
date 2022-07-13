@@ -88,6 +88,8 @@ pub enum Subroutine {
         opt: CollectPlaintextsOptions,
     },
     /// Measures the timings of all plaintexts in specified DB. Outputs recodings in CSV format.
+    /// 
+    /// Uses a randomly generated keypair
     IterationTimings {
         #[structopt(subcommand, name = "hqc-algs")]
         alg: RejectionSamplingAlgorithms,

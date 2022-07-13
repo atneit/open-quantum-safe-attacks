@@ -1,9 +1,9 @@
 #!/bin/bash
 
 LEN=100000
-HW=${1:-150}
+HW=${1:-149}
 EPSILON=0.01
-THREADS=12
+THREADS=4
 RELEASE="--release"
 ALG="kem-l1"
 ROOT="data/compressed/bike-l1"

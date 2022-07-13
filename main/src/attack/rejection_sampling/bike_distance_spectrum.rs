@@ -12,6 +12,9 @@ use crate::{
 
 #[derive(Debug, StructOpt)]
 pub struct BikeDistanceSpectrumOptions {
+    /// Create new keypair if the specifed keyfile is missing
+    #[structopt(short("c"), long)]
+    pub create_key_if_missing: bool,
     /// Location of serialized key pair file.
     #[structopt(short("k"), long)]
     pub key_file: PathBuf,
@@ -25,7 +28,7 @@ pub struct BikeDistanceSpectrumOptions {
 pub fn run<BIKE: 'static + Bike + std::marker::Send>(
     opt: BikeDistanceSpectrumOptions,
 ) -> Result<(), String> {
-    let (_, mut sk) = read_keypair::<BIKE>(&opt.key_file, false)?;
+    let (_, mut sk) = read_keypair::<BIKE>(&opt.key_file, opt.create_key_if_missing)?;
     let params = BIKE::params::<usize>();
     let max_distance = (params.PARAM_R + 1 )/ 2; // div_ceil
     let mut distances = vec![0; max_distance + 1];
@@ -50,7 +53,7 @@ pub fn run<BIKE: 'static + Bike + std::marker::Send>(
         }
     }
 
-    info!("Opending target file: {:?}", opt.destination);
+    info!("Opening target file: {:?}", opt.destination);
     let mut writer =
         csv::Writer::from_writer(BufWriter::new(File::create(&opt.destination).strerr()?));
     writer
