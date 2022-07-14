@@ -12,10 +12,20 @@ Proof-Of-Concept attacks against `liboqs` (Open Quantum Safe).
 
 You need  `git clone --recursive <url>` in order to also get the submodules.
 
+### 1.1 Note about Git LFS
+GIT LFS is used to store some data-files (most notably rejection-sampling-plaintexts.db). Therefore GIT LFS should be installed in order to clone this repository correctly.
+
+If GIT LFS is not installed, these files will be only checked out as (almost) empty text-files. So if you do not care about the pre-generated plaintexts (because you wish to generate your own) then you can continue without GIT LFS.
+
+If you have GIT LFS installed, but still wish to ignore the LFS files you can do this by cloning with the `GIT_LFS_SKIP_SMUDGE=1 git clone --recursive <url>` command
 
 ## 2. Dependencies on debian/ubuntu
 
-    sudo apt install cmake gcc ninja-build clang libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz
+To install some dependencies, that may or may not be requred depending on your usage of this repository, you may execute the following on debian derrived linux distributions.
+
+    sudo apt install cmake gcc clang libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz
+
+For other distributions use the corresponding package manager to install at least the `cmake gcc clang libssl-dev` packages. Other packages might also be required.
 
 ## 3. How to compile dependency liboqs (Linux)
 
@@ -46,19 +56,19 @@ e.g.
 
     cargo run --release -- --help
 
-Of course, if you wish it is also possible to run the binary directly after building: `target/release/oqs-afw --help` or `target/debug/oqs-afw --help`
+Of course, if you wish, it is also possible to run the binary directly after building: e.g. `target/release/oqs-afw --help` or `target/debug/oqs-afw --help`
 
 ## 7. Usage instructions
 
-This program is comprised of many different subprogram designed to aid in the development and research of new side-channel attacks against the `liboqs` library.
+This program is comprised of many different subprograms designed to aid in the development and research of new side-channel attacks against the `liboqs` library.
 
 Most of these commands are of no use for new users but simply remain as a collection of routines that might or might not be usefull in any future endeavors.
 
 The **actually usefull** commands, for new users are documented in the following files:
 
 1. Paper: "A key-recovery timing attack on post-quantum primitives using the Fujisaki-Okamoto transformation and its application on FrodoKEM"
-    * Not implemented.
+    * Usage instructions are not written, the reader is mostly on its own for this attack. Though, the most usefull command is `cargo run --release -- attack memcmp-frodo-crack-s`. There are also some undocumented files in the `scripts` folder for interpreting the csv output, such as `latency.py` and `violinplot.py`
 2. Paper: "Don't Reject This: Key-Recovery Timing Attacks Due to Rejection-Sampling in HQC and BIKE"
-    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb)
+    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb) for a walkthrough on reproducing the results from the paper. This is a Jupyter Notebook, if you do not have a Jupyter environment to open this file then github's own fileviewer provides a good read-only soulution that requires no installation.
 
 
