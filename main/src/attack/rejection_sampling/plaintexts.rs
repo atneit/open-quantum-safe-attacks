@@ -179,7 +179,8 @@ impl<KEM: KemWithRejectionSampling> PlaintextDb<KEM> {
                 Ok(Some(mut conn)) => {
                     let tx = conn.transaction().strerr()?;
                     let mut queue = self.db.queue.lock().strerr()?;
-                    for (sql, params) in queue.drain(..) {
+                    let drain_it = queue.drain(..);
+                    for (sql, params) in drain_it {
                         tx.execute(&sql, params_from_iter(params)).strerr()?;
                     }
                     tx.execute(&sql, params_from_iter(params)).strerr()?;

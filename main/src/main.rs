@@ -1,5 +1,5 @@
-#![feature(test, bench_black_box)]
-#![feature(int_roundings)]
+#![cfg_attr(feature = "code-alignment", feature(test, bench_black_box))]
+//#![feature(int_roundings)]
 
 //use liboqs_rs_bindings as oqs;
 

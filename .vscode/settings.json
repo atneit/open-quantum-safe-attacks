@@ -164,4 +164,7 @@
     "latex-workshop.latex.build.clearLog.everyRecipeStep.enabled": false,
     "latex-workshop.latex.recipe.default": "lastUsed",
     "rust-analyzer.diagnostics.experimental.enable": false,
+    "githubPullRequests.remotes": [
+        "github-public"
+    ],
 }

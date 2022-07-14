@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This script must be running from repository root"
+
 LEN=1000000
 THREADS=10
 RELEASE="--release"

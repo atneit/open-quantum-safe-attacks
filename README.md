@@ -6,47 +6,49 @@ Proof-Of-Concept attacks against `liboqs` (Open Quantum Safe).
 
 * FrodoKEM memcmp timing attack. [Paper here](https://eprint.iacr.org/2020/743)
 * Rejection Sampling timing attack on BIKE [Paper here](https://eprint.iacr.org/2021/1485)
-  * Attack on HQC implemented here: [TODO]()
+  * Attack on HQC implemented [separately here](https://github.com/hqc-attack/hqc-attack)
 
-## Get the source
+## 1. Get the source
 
 You need  `git clone --recursive <url>` in order to also get the submodules.
 
+### 1.1 Note about Git LFS
+GIT LFS is used to store some data-files (most notably rejection-sampling-plaintexts.db). Therefore GIT LFS should be installed in order to clone this repository correctly.
 
-## Dependencies on debian/ubuntu
+If GIT LFS is not installed, these files will be only checked out as (almost) empty text-files. So if you do not care about the pre-generated plaintexts (because you wish to generate your own) then you can continue without GIT LFS.
 
-    sudo apt install cmake gcc ninja-build clang libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz
+If you have GIT LFS installed, but still wish to ignore the LFS files you can do this by cloning with the `GIT_LFS_SKIP_SMUDGE=1 git clone --recursive <url>` command
 
-## How to compile dependency liboqs (Linux)
+## 2. Dependencies on debian/ubuntu
+
+To install some dependencies, that may or may not be requred depending on your usage of this repository, you may execute the following on debian derrived linux distributions.
+
+    sudo apt install cmake gcc clang libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz
+
+For other distributions use the corresponding package manager to install at least the `cmake gcc clang libssl-dev` packages. Other packages might also be required.
+
+## 3. How to compile dependency liboqs (Linux)
 
     cd liboqs-rs-bindings
     ./build-oqs.sh
     cd ..
 
-## How to compile the program  (Linux)
+## 4. How to install the Rust compiler
 
-You need nightly version of `rust` installed, if you haven't already, here's how:
+You need a proper `rust` environment installed, if you haven't already, here's how:
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-To install the nighly version of the compiler run the following command:
-
-    rustup toolchain install nightly
-
-To make the nightly version the default for the current directory simply run:
-
-    rustup override set nightly
+## 5. How to compile the program  (Linux)
     
 Then it is a simple matter to finally build the program with
 
     cargo build --release
 
-## How to run the program
+## 6. How to run the program
 
 The easiest way to run it is to use the following command (which also (re)builds it, if necessary).
 Anything put after "`--`" is arguments to the compiled program itself when it runs. Every argument before the
-`--` are arguments to the build system `cargo`. `--release`, for example, tells `cargo` that it should build and 
-run the optimized non-debug variant (This does not affect the cryptosystems in the `oqs` library though, since it has already been compiled once, with optimization, in the steps above and will not be autmatically rebuilt if the C-sources change)
+`--` are arguments to the build system `cargo`. For example, `--release`, tells `cargo` that it should build and run the optimized non-debug variant (This does not affect the cryptosystems in the `oqs` library, since they have already been compiled once, with optimization, in step 3 above and will not be autmatically rebuilt even if the C-sources change)
 
     cargo run --release -- <program arguments>
 
@@ -54,11 +56,19 @@ e.g.
 
     cargo run --release -- --help
 
-Of course, if you wish it is also possible to run the binary directly after building: `target/release/oqs-afw help`
+Of course, if you wish, it is also possible to run the binary directly after building: e.g. `target/release/oqs-afw --help` or `target/debug/oqs-afw --help`
 
-## Saved data
+## 7. Usage instructions
 
-In this repo several data files are also stored. These are compressed to save space and download time 
-and they are located in the `data/compressed` folder.
+This program is comprised of many different subprograms designed to aid in the development and research of new side-channel attacks against the `liboqs` library.
 
-If you wish to analyze them with the scripts in the `scripts` folder you must uncompress them first (preferably in the `data/` folder).
+Most of these commands are of no use for new users but simply remain as a collection of routines that might or might not be usefull in any future endeavors.
+
+The **actually usefull** commands, for new users are documented in the following files:
+
+1. Paper: "A key-recovery timing attack on post-quantum primitives using the Fujisaki-Okamoto transformation and its application on FrodoKEM"
+    * Usage instructions are not written, the reader is mostly on its own for this attack. Though, the most usefull command is `cargo run --release -- attack memcmp-frodo-crack-s`. There are also some undocumented files in the `scripts` folder for interpreting the csv output, such as `latency.py` and `violinplot.py`
+2. Paper: "Don't Reject This: Key-Recovery Timing Attacks Due to Rejection-Sampling in HQC and BIKE"
+    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb) for a walkthrough on reproducing the results from the paper. This is a Jupyter Notebook, if you do not have a Jupyter environment to open this file then github's own fileviewer provides a good read-only soulution that requires no installation.
+
+
