@@ -21,7 +21,7 @@ If you have GIT LFS installed, but still wish to ignore the LFS files you can do
 
 ## 2. Dependencies on debian/ubuntu
 
-To install some dependencies, that may or may not be requred depending on your usage of this repository, you may execute the following on debian derrived linux distributions.
+To install some dependencies, that may or may not be required depending on your usage of this repository, you may execute the following on debian derived linux distributions.
 
     sudo apt install cmake gcc clang libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz
 
@@ -48,7 +48,7 @@ Then it is a simple matter to finally build the program with
 
 The easiest way to run it is to use the following command (which also (re)builds it, if necessary).
 Anything put after "`--`" is arguments to the compiled program itself when it runs. Every argument before the
-`--` are arguments to the build system `cargo`. For example, `--release`, tells `cargo` that it should build and run the optimized non-debug variant (This does not affect the cryptosystems in the `oqs` library, since they have already been compiled once, with optimization, in step 3 above and will not be autmatically rebuilt even if the C-sources change)
+`--` are arguments to the build system `cargo`. For example, `--release`, tells `cargo` that it should build and run the optimized non-debug variant (This does not affect the cryptosystems in the `oqs` library, since they have already been compiled once, with optimization, in step 3 above and will not be automatically rebuilt even if the C-sources change)
 
     cargo run --release -- <program arguments>
 
@@ -62,13 +62,19 @@ Of course, if you wish, it is also possible to run the binary directly after bui
 
 This program is comprised of many different subprograms designed to aid in the development and research of new side-channel attacks against the `liboqs` library.
 
-Most of these commands are of no use for new users but simply remain as a collection of routines that might or might not be usefull in any future endeavors.
+Most of these commands are of no use for new users but simply remain as a collection of routines that might or might not be useful in any future endeavours.
 
-The **actually usefull** commands, for new users are documented in the following files:
+The **actually useful** commands, for new users are documented in the following files:
 
 1. Paper: "A key-recovery timing attack on post-quantum primitives using the Fujisaki-Okamoto transformation and its application on FrodoKEM"
-    * Usage instructions are not written, the reader is mostly on its own for this attack. Though, the most usefull command is `cargo run --release -- attack memcmp-frodo-crack-s`. There are also some undocumented files in the `scripts` folder for interpreting the csv output, such as `latency.py` and `violinplot.py`
+    * Usage instructions are not written, the reader is mostly on its own for this attack. Though, the most useful command is `cargo run --release -- attack memcmp-frodo-crack-s`. There are also some undocumented files in the `scripts` folder for interpreting the csv output, such as `latency.py` and `violinplot.py`
 2. Paper: "Don't Reject This: Key-Recovery Timing Attacks Due to Rejection-Sampling in HQC and BIKE"
-    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb) for a walkthrough on reproducing the results from the paper. This is a Jupyter Notebook, if you do not have a Jupyter environment to open this file then github's own fileviewer provides a good read-only soulution that requires no installation.
+    * See [visualize-rejection_sampling_key_recovery.ipynb](scripts/visualize-rejection_sampling_key_recovery.ipynb) for a walkthrough on reproducing the results from the paper. This is a Jupyter Notebook, if you do not have a Jupyter environment to open this file then github's own fileviewer provides a good read-only solution that requires no installation.
 
 
+### 7.1 Logging and debugging
+
+`oqs-afw` support the following options for debugging and logging purposes. The debug log level is quite verbose and it will slow down the program. The Trace level is **extremely** verbose is is practically useless for most purposes.
+
+    -d, --logdest <logdest>      Additionally write logs to the specified destination
+    -l, --loglevel <loglevel>    Set log level to trace, debug, info, warn or error [default: info]

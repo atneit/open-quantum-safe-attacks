@@ -32,9 +32,10 @@ enum Command {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "oqs-afw")]
 struct ProgramArgs {
-    /// Set log level to trace, debug, info, warn or error
+    /// Set log level to trace, debug, info, warn or error.
     #[structopt(short, long, default_value("info"))]
     loglevel: log::Level,
+    /// Additionally write logs to the specified destination.
     #[structopt(short("d"), long)]
     logdest: Option<PathBuf>,
     #[structopt(subcommand)]

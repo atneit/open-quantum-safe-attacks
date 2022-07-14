@@ -3,7 +3,6 @@
 members = [
     "liboqs-rs-bindings",
     "main",
-    "scripts/postprocess"
 ]
 
 default-members = [
